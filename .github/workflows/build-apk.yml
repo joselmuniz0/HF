@@ -1,0 +1,61 @@
+name: Build HF Coach APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.source/**'
+      - '.github/workflows/build-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build Android debug APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Reconstruct and extract source archive
+        run: |
+          cat .source/*.b64 | base64 --decode > HF-Coach-Android-Source.zip
+          echo "ae1afa34a074b78a407522016cf614d04dfabe2bd2c7c64b7a305f02d61eeab3  HF-Coach-Android-Source.zip" | sha256sum --check
+          mkdir -p app-source
+          unzip -q HF-Coach-Android-Source.zip -d app-source
+          test -f app-source/package.json
+          test -f app-source/capacitor.config.json
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        working-directory: app-source
+        run: npm install --no-audit --no-fund
+      - name: Build web application
+        working-directory: app-source
+        run: npm run build
+      - name: Generate Android project
+        working-directory: app-source
+        run: npx cap add android
+      - name: Sync Capacitor
+        working-directory: app-source
+        run: npx cap sync android
+      - name: Build debug APK
+        working-directory: app-source/android
+        run: ./gradlew --no-daemon assembleDebug
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HF-Coach-debug-apk
+          path: app-source/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
