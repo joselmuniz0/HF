@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths:
       - 'HF-Coach-Android-Source.zip'
+      - '.central-source/**'
+      - 'scripts/extract-central-overlay.sh'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -26,6 +28,11 @@ jobs:
           unzip -q HF-Coach-Android-Source.zip -d app-source
           test -f app-source/package.json
           test -f app-source/capacitor.config.json
+      - name: Reconstruct and apply HF Central overlay
+        run: |
+          bash scripts/extract-central-overlay.sh
+          cp .hf-central/platform/app-overlay/reports.js app-source/src/reports.js
+          node .hf-central/platform/app-overlay/inject-reports.mjs app-source/src/index.html
       - name: Patch native video loading for Android WebView
         run: |
           node <<'NODE'
@@ -143,3 +150,11 @@ jobs:
           path: app-source/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload HF Central setup package
+        uses: actions/upload-artifact@v4
+        with:
+          name: HF-Central-Setup
+          path: .hf-central/HF-Central-Overlay.zip
+          if-no-files-found: error
+          retention-days: 30

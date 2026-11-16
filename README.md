@@ -31,3 +31,16 @@ La estructura prevé administración central de la organización y gestión de a
 ## Almacenamiento Android
 
 La aplicación utiliza almacenamiento privado de la app y selectores del sistema para que cada usuario elija videos e imágenes. No solicita acceso indiscriminado a todos los archivos del teléfono.
+
+
+## HF Central — informes Android y panel web
+
+La nueva capa de HF Central incorpora:
+- Pestaña **Informes** en Android para consultar datos sincronizados y registrar la revisión humana de evaluaciones.
+- Panel web organizacional para que el administrador consulte coaches, atletas, sesiones e informes.
+- Invitación de coaches mediante Supabase Edge Function protegida por rol de administrador.
+- Despliegue del panel web con Vercel mediante `vercel.json`.
+
+Guía operativa: [docs/central-platform-github.md](docs/central-platform-github.md).
+
+Los archivos de migración, Edge Function y aplicación web se empaquetan en `HF-Central-Overlay.zip`, reconstruido por `scripts/extract-central-overlay.sh`. GitHub Actions publica ese ZIP como artefacto `HF-Central-Setup` junto con cada build Android.
