@@ -4,12 +4,13 @@ Repositorio privado del proyecto HF Coach. La primera entrega reutiliza la aplic
 
 ## Compilación del APK
 
-El código fuente de esta entrega está guardado en segmentos Base64 dentro de `.source/`. El workflow `Build HF Coach APK` los recompone, verifica el SHA-256 del ZIP original, extrae el proyecto, instala dependencias, genera el proyecto Android y compila un APK de depuración.
+El ZIP fuente original debe estar en la raíz del repositorio con el nombre exacto `HF-Coach-Android-Source.zip`. GitHub Actions verifica su SHA-256, lo extrae, instala dependencias, genera el proyecto Android y compila un APK de depuración.
 
-1. Abrir la pestaña **Actions**.
-2. Seleccionar **Build HF Coach APK**.
-3. Presionar **Run workflow** para una compilación manual. También se ejecuta automáticamente cuando cambian los segmentos fuente o el workflow en `main`.
-4. Al finalizar correctamente, descargar el artefacto `HF-Coach-debug-apk` desde el resumen de la ejecución.
+1. En la pestaña **Code**, seleccionar **Add file → Upload files**.
+2. Subir el archivo `HF-Coach-Android-Source.zip` a la raíz del repositorio, sin descomprimirlo ni cambiarle el nombre.
+3. Confirmar el commit en la rama `main`.
+4. Abrir **Actions** y seleccionar **Build HF Coach APK**. La carga del ZIP también dispara la compilación automáticamente.
+5. Al finalizar correctamente, abrir la ejecución y descargar el artefacto `HF-Coach-debug-apk`.
 
 El APK `debug` es para pruebas piloto. No es una versión firmada para distribución pública.
 
