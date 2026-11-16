@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'HF-Coach-Android-Source.zip'
+      - '.github/workflows/build-apk.yml'
 
 permissions:
   contents: read
@@ -35,7 +36,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
       - name: Install dependencies
         working-directory: app-source
         run: npm install --no-audit --no-fund
