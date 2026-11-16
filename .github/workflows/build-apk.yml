@@ -5,8 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - '.source/**'
-      - '.github/workflows/build-apk.yml'
+      - 'HF-Coach-Android-Source.zip'
 
 permissions:
   contents: read
@@ -18,9 +17,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Reconstruct and extract source archive
+      - name: Verify and extract source archive
         run: |
-          cat .source/*.b64 | base64 --decode > HF-Coach-Android-Source.zip
+          test -f HF-Coach-Android-Source.zip
           echo "ae1afa34a074b78a407522016cf614d04dfabe2bd2c7c64b7a305f02d61eeab3  HF-Coach-Android-Source.zip" | sha256sum --check
           mkdir -p app-source
           unzip -q HF-Coach-Android-Source.zip -d app-source
