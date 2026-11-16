@@ -26,28 +26,89 @@ jobs:
           unzip -q HF-Coach-Android-Source.zip -d app-source
           test -f app-source/package.json
           test -f app-source/capacitor.config.json
-      - name: Patch local video loading for Android WebView
+      - name: Patch native video loading for Android WebView
         run: |
           node <<'NODE'
           const fs = require('fs');
-          const path = 'app-source/src/index.html';
-          let html = fs.readFileSync(path, 'utf8');
-          const videoInit = 'const vid=document.createElement("video");vid.muted=true;vid.playsInline=true;vid.preload="auto";';
-          const safeInit = 'const vid=document.createElement("video");vid.crossOrigin="anonymous";vid.setAttribute("crossorigin","anonymous");vid.muted=true;vid.playsInline=true;vid.preload="auto";';
-          if (html.includes(videoInit)) {
-            html = html.replace(videoInit, safeInit);
-          } else if (!html.includes('vid.crossOrigin="anonymous"')) {
-            throw new Error('Expected MediaPipe video element initialization was not found; refusing to build unpatched app.');
+
+          const nativePath = 'app-source/src/native.js';
+          let native = fs.readFileSync(nativePath, 'utf8');
+          if (!native.includes('async prepareVideoFile(file)')) {
+            const marker = '  async preparePrivateFolder() {';
+            if (!native.includes(marker)) throw new Error('No encuentro el punto de inserción en native.js.');
+            const method = [
+              '  async prepareVideoFile(file) {',
+              '    if (!Capacitor.isNativePlatform()) return URL.createObjectURL(file);',
+              '    if (!file || !file.size) throw new Error("El archivo de video está vacío.");',
+              '    if (file.size > 100 * 1024 * 1024) throw new Error("El video supera 100 MB. Recortalo o reducí su resolución antes de analizarlo.");',
+              '    const data = await new Promise((resolve, reject) => {',
+              '      const reader = new FileReader();',
+              '      reader.onload = () => {',
+              '        const value = String(reader.result || "");',
+              '        const comma = value.indexOf(",");',
+              '        if (comma < 0) return reject(new Error("No se pudo leer el video seleccionado."));',
+              '        resolve(value.slice(comma + 1));',
+              '      };',
+              '      reader.onerror = () => reject(reader.error || new Error("Falló la lectura del video."));',
+              '      reader.readAsDataURL(file);',
+              '    });',
+              '    const safeName = String(file.name || "video.mp4").replace(/[^a-z0-9._-]/gi, "_").slice(-80);',
+              '    const path = "hfcoach-video-" + Date.now() + "-" + safeName;',
+              '    const saved = await Filesystem.writeFile({ path, directory: Directory.Cache, data, recursive: true });',
+              '    const previousPath = window.HFNativeVideoPath;',
+              '    window.HFNativeVideoPath = path;',
+              '    if (previousPath) {',
+              '      try { await Filesystem.deleteFile({ path: previousPath, directory: Directory.Cache }); } catch (_) {}',
+              '    }',
+              '    return Capacitor.convertFileSrc(saved.uri);',
+              '  },',
+              ''
+            ].join('\n');
+            native = native.replace(marker, method + marker);
+            fs.writeFileSync(nativePath, native);
           }
-          const oldSource = 'vid.src=URL.createObjectURL(f);';
-          const safeSource = 'vid.src=URL.createObjectURL(new Blob([f],{type:f.type||"video/mp4"}));vid.load();';
-          if (html.includes(oldSource)) {
-            html = html.replace(oldSource, safeSource);
-          } else if (!html.includes('vid.src=URL.createObjectURL(new Blob([f]')) {
-            throw new Error('Expected local video source assignment was not found; refusing to build unpatched app.');
+
+          const htmlPath = 'app-source/src/index.html';
+          let html = fs.readFileSync(htmlPath, 'utf8');
+          const oldChange = '$("#f").onchange=e=>{const f=e.target.files[0];if(!f)return;selectedVideoFile=f;window.HFCurrentVideo=f;window.HFTrack("video_selected",{type:f.type||"unknown",size_bytes:f.size});vid.src=URL.createObjectURL(f);$("#go").disabled=false;$("#st").textContent="Video cargado.";$("#out").innerHTML=""};';
+          const newChange = [
+            '$("#f").onchange=async e=>{',
+            '  const f=e.target.files[0];if(!f)return;',
+            '  if(f.size>100*1024*1024){$("#st").textContent="El video supera 100 MB. Recortalo o reducí su resolución.";e.target.value="";return;}',
+            '  selectedVideoFile=f;window.HFCurrentVideo=f;window.HFTrack("video_selected",{type:f.type||"unknown",size_bytes:f.size});',
+            '  $("#go").disabled=true;$("#st").textContent="Preparando el video para análisis local…";$("#out").innerHTML="";',
+            '  try{',
+            '    const native=window.HFNative;',
+            '    if(!native)throw new Error("El módulo de almacenamiento Android todavía no está disponible. Cerrá y volvé a abrir la aplicación.");',
+            '    const source=native.isNative?await native.prepareVideoFile(f):URL.createObjectURL(f);',
+            '    vid.removeAttribute("crossorigin");vid.src=source;vid.load();',
+            '    await new Promise((resolve,reject)=>{',
+            '      if(vid.readyState>=1)return resolve();',
+            '      const cleanup=()=>{clearTimeout(timer);vid.removeEventListener("loadedmetadata",ready);vid.removeEventListener("error",fail);};',
+            '      const ready=()=>{cleanup();resolve();};',
+            '      const fail=()=>{cleanup();reject(new Error("Android no pudo abrir este video. Probá con MP4 H.264."));};',
+            '      const timer=setTimeout(()=>{cleanup();reject(new Error("El video tardó demasiado en abrirse."));},15000);',
+            '      vid.addEventListener("loadedmetadata",ready,{once:true});vid.addEventListener("error",fail,{once:true});',
+            '    });',
+            '    $("#go").disabled=false;$("#st").textContent="Video cargado. Listo para analizar."; ',
+            '  }catch(err){$("#st").textContent="No se pudo preparar el video: "+(err.message||err);}',
+            '};'
+          ].join('\n');
+          if (html.includes(oldChange)) {
+            html = html.replace(oldChange, newChange);
+          } else if (!html.includes('native.prepareVideoFile(f)')) {
+            throw new Error('No encuentro el selector de video esperado en index.html.');
           }
-          fs.writeFileSync(path, html);
-          console.log('Applied Android WebView CORS-safe local video initialization.');
+          html = html.replace('vid.crossOrigin="anonymous";vid.setAttribute("crossorigin","anonymous");', '');
+          const oldLandmarker = 'lm=await PoseLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:M},runningMode:"VIDEO",numPoses:1})';
+          const cpuLandmarker = 'lm=await PoseLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:M,delegate:"CPU"},runningMode:"VIDEO",numPoses:1})';
+          if (html.includes(oldLandmarker)) {
+            html = html.replace(oldLandmarker, cpuLandmarker);
+          } else if (!html.includes('delegate:"CPU"')) {
+            throw new Error('No encuentro la inicialización del modelo PoseLandmarker esperada.');
+          }
+          fs.writeFileSync(htmlPath, html);
+          console.log('Android video source now uses app-private storage and a same-origin Capacitor URL; MediaPipe CPU delegate selected.');
           NODE
       - name: Set up Node.js
         uses: actions/setup-node@v4
