@@ -26,6 +26,29 @@ jobs:
           unzip -q HF-Coach-Android-Source.zip -d app-source
           test -f app-source/package.json
           test -f app-source/capacitor.config.json
+      - name: Patch local video loading for Android WebView
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'app-source/src/index.html';
+          let html = fs.readFileSync(path, 'utf8');
+          const videoInit = 'const vid=document.createElement("video");vid.muted=true;vid.playsInline=true;vid.preload="auto";';
+          const safeInit = 'const vid=document.createElement("video");vid.crossOrigin="anonymous";vid.setAttribute("crossorigin","anonymous");vid.muted=true;vid.playsInline=true;vid.preload="auto";';
+          if (html.includes(videoInit)) {
+            html = html.replace(videoInit, safeInit);
+          } else if (!html.includes('vid.crossOrigin="anonymous"')) {
+            throw new Error('Expected MediaPipe video element initialization was not found; refusing to build unpatched app.');
+          }
+          const oldSource = 'vid.src=URL.createObjectURL(f);';
+          const safeSource = 'vid.src=URL.createObjectURL(new Blob([f],{type:f.type||"video/mp4"}));vid.load();';
+          if (html.includes(oldSource)) {
+            html = html.replace(oldSource, safeSource);
+          } else if (!html.includes('vid.src=URL.createObjectURL(new Blob([f]')) {
+            throw new Error('Expected local video source assignment was not found; refusing to build unpatched app.');
+          }
+          fs.writeFileSync(path, html);
+          console.log('Applied Android WebView CORS-safe local video initialization.');
+          NODE
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
