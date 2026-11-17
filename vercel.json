@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "bash scripts/extract-central-overlay.sh",
+  "buildCommand": "bash scripts/extract-central-overlay.sh && node scripts/build-central-config.mjs",
   "outputDirectory": ".hf-central/admin",
   "installCommand": "echo 'HF Central static dashboard: no package installation required'"
 }

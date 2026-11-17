@@ -76,3 +76,8 @@ Antes de cargar datos reales, usar datos ficticios y validar:
 - Las evaluaciones aparecen pendientes hasta que un coach humano registre la revisión y devolución.
 
 Para atletas menores de edad, obtener previamente la autorización de sus responsables. Acordar retención, exportación y eliminación de información antes del piloto.
+
+
+## Etapa 2 — activación de coaches
+
+La actualización del flujo de invitaciones, la pantalla de definición de contraseña y la configuración de Vercel se documentan en [docs/central-stage2-activation.md](central-stage2-activation.md).

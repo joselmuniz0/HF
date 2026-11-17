@@ -8,6 +8,10 @@ on:
       - 'HF-Coach-Android-Source.zip'
       - '.central-source/**'
       - 'scripts/extract-central-overlay.sh'
+      - 'scripts/patch-central-stage2.mjs'
+      - 'scripts/build-central-config.mjs'
+      - 'supabase/functions/**'
+      - 'docs/**'
       - '.github/workflows/build-apk.yml'
 
 permissions:
@@ -155,6 +159,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HF-Central-Setup
-          path: .hf-central/HF-Central-Overlay.zip
+          path: .hf-central/
           if-no-files-found: error
           retention-days: 30

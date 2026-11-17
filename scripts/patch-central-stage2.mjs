@@ -1,0 +1,143 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+const adminDir = path.resolve('.hf-central/admin');
+const appPath = path.join(adminDir, 'app.js');
+const htmlPath = path.join(adminDir, 'index.html');
+const cssPath = path.join(adminDir, 'styles.css');
+
+function replaceRequired(source, search, replacement, label) {
+  if (!source.includes(search)) throw new Error('No se encontró el punto de inserción esperado: ' + label);
+  return source.replace(search, replacement);
+}
+
+let app = fs.readFileSync(appPath, 'utf8');
+if (!app.includes('async function handleInviteLanding()')) {
+  const start = app.indexOf('function setConfigInputs() {');
+  const end = app.indexOf('async function signIn() {', start);
+  if (start < 0 || end < 0) throw new Error('No se encontró el bloque de configuración del panel central.');
+
+  const activationCode = [
+    'function setConfigInputs() {',
+    '  const runtime = window.HF_CENTRAL_CONFIG || {};',
+    '  try {',
+    "    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') || {};",
+    "    const url = runtime.supabaseUrl || saved.url || '';",
+    "    const key = runtime.supabasePublishableKey || saved.key || '';",
+    "    $('supabaseUrl').value = url;",
+    "    $('supabaseKey').value = key;",
+    "    if (runtime.supabaseUrl) $('supabaseUrl').readOnly = true;",
+    "    if (runtime.supabasePublishableKey) $('supabaseKey').readOnly = true;",
+    '  } catch { /* configuración inválida: se vuelve a ingresar */ }',
+    '}',
+    '',
+    'function getClient() {',
+    '  const runtime = window.HF_CENTRAL_CONFIG || {};',
+    "  const url = ($('supabaseUrl')?.value || runtime.supabaseUrl || '').trim();",
+    "  const key = ($('supabaseKey')?.value || runtime.supabasePublishableKey || '').trim();",
+    "  if (!url.startsWith('https://') || !key) throw new Error('El panel no tiene configurada la URL y la clave pública de Supabase.');",
+    '  localStorage.setItem(STORAGE_KEY, JSON.stringify({ url, key }));',
+    '  if (!supabase) {',
+    "    const isInviteCallback = new URLSearchParams(window.location.search).get('flow') === 'invite';",
+    "    supabase = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: isInviteCallback ? 'implicit' : 'pkce' } });",
+    '  }',
+    '  return supabase;',
+    '}',
+    '',
+    "function showInviteStatus(text, type = '') {",
+    "  const el = $('inviteSetupStatus');",
+    "  if (el) { el.textContent = text; el.className = 'status ' + type; }",
+    '}',
+    '',
+    'async function handleInviteLanding() {',
+    '  const params = new URLSearchParams(window.location.search);',
+    "  if (params.get('flow') !== 'invite') return;",
+    "  $('loginPanel').hidden = true;",
+    "  $('dashboard').hidden = true;",
+    "  $('inviteSetupPanel').hidden = false;",
+    '  try {',
+    '    const sb = getClient();',
+    '    const { data: sessionData, error } = await sb.auth.getSession();',
+    '    if (error) throw error;',
+    '    if (!sessionData.session) throw new Error("No se pudo validar el enlace. Puede haber vencido o haber sido utilizado. Pedile al administrador una nueva invitación.");',
+    "    $('inviteEmail').textContent = sessionData.session.user.email || 'Cuenta invitada';",
+    "    showInviteStatus('Invitación validada. Definí tu contraseña para completar la activación.', 'success');",
+    '  } catch (error) {',
+    "    $('inviteSetupForm').hidden = true;",
+    "    showInviteStatus(error.message || String(error), 'error');",
+    '  }',
+    '}',
+    '',
+    'async function setInvitePassword(event) {',
+    '  event.preventDefault();',
+    "  const password = $('invitePassword').value;",
+    "  const confirmation = $('invitePasswordConfirm').value;",
+    "  if (password.length < 10) return showInviteStatus('La contraseña debe tener al menos 10 caracteres.', 'error');",
+    "  if (password !== confirmation) return showInviteStatus('Las contraseñas no coinciden.', 'error');",
+    '  try {',
+    '    const sb = getClient();',
+    '    const { data: sessionData, error: sessionError } = await sb.auth.getSession();',
+    '    if (sessionError) throw sessionError;',
+    "    if (!sessionData.session) throw new Error('La sesión de invitación no está activa. Solicitá una nueva invitación.');",
+    "    showInviteStatus('Guardando contraseña…');",
+    '    const { error } = await sb.auth.updateUser({ password });',
+    '    if (error) throw error;',
+    '    await sb.auth.signOut();',
+    "    $('inviteSetupPanel').hidden = true;",
+    "    $('inviteDonePanel').hidden = false;",
+    "    $('sessionLabel').textContent = 'Cuenta activada';",
+    '    history.replaceState({}, document.title, window.location.pathname);',
+    '  } catch (error) {',
+    "    showInviteStatus(error.message || String(error), 'error');",
+    '  }',
+    '}',
+    ''
+  ].join('\n');
+  app = app.slice(0, start) + activationCode + app.slice(end);
+}
+
+const inviteListener = "$('inviteForm').addEventListener('submit', inviteCoach);";
+if (!app.includes("$('inviteSetupForm').addEventListener('submit', setInvitePassword);")) {
+  app = replaceRequired(app, inviteListener, inviteListener + "\n$('inviteSetupForm').addEventListener('submit', setInvitePassword);", 'listener del formulario de invitación');
+}
+if (!app.includes('handleInviteLanding();')) {
+  app = replaceRequired(app, 'setConfigInputs();', 'setConfigInputs();\nhandleInviteLanding();', 'inicio del flujo de activación');
+}
+fs.writeFileSync(appPath, app, 'utf8');
+
+let html = fs.readFileSync(htmlPath, 'utf8');
+if (!html.includes('id="inviteSetupPanel"')) {
+  const invitePanels = [
+    '    <section id="inviteSetupPanel" class="panel login-panel" hidden>',
+    '      <h2>Activá tu cuenta de coach</h2>',
+    '      <p>La invitación fue validada. Creá una contraseña personal para ingresar a HF Coach.</p>',
+    '      <p class="muted">Cuenta: <strong id="inviteEmail">—</strong></p>',
+    '      <form id="inviteSetupForm">',
+    '        <label>Nueva contraseña<input id="invitePassword" type="password" minlength="10" autocomplete="new-password" required></label>',
+    '        <label>Confirmar contraseña<input id="invitePasswordConfirm" type="password" minlength="10" autocomplete="new-password" required></label>',
+    '        <button class="primary" type="submit">Guardar contraseña y activar cuenta</button>',
+    '      </form>',
+    '      <p id="inviteSetupStatus" class="status" role="status" aria-live="polite"></p>',
+    '      <p class="notice">Usá una contraseña exclusiva. No la compartas con otros coaches ni con el administrador.</p>',
+    '    </section>',
+    '',
+    '    <section id="inviteDonePanel" class="panel login-panel" hidden>',
+    '      <h2>Cuenta activada</h2>',
+    '      <p>La contraseña quedó configurada correctamente.</p>',
+    '      <p>Ya podés cerrar esta página e ingresar a HF Coach desde la aplicación Android con tu correo y contraseña.</p>',
+    '    </section>',
+    ''
+  ].join('\n');
+  html = replaceRequired(html, '  <main class="shell">\n', '  <main class="shell">\n' + invitePanels, 'paneles de activación');
+}
+if (!html.includes('<script src="./config.js"></script>')) {
+  html = replaceRequired(html, '  <script type="module" src="./app.js"></script>', '  <script src="./config.js"></script>\n  <script type="module" src="./app.js"></script>', 'configuración runtime del panel');
+}
+fs.writeFileSync(htmlPath, html, 'utf8');
+
+let css = fs.readFileSync(cssPath, 'utf8');
+if (!css.includes('#inviteSetupForm')) {
+  css += '\n#inviteSetupForm label{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:600;margin:14px 0}#inviteSetupForm button{width:100%}#inviteSetupStatus:empty{display:none}#inviteSetupPanel .notice{margin-top:18px}\n';
+}
+fs.writeFileSync(cssPath, css, 'utf8');
+console.log('HF Central Stage 2: flujo de activación de coaches aplicado.');
