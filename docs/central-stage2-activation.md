@@ -54,3 +54,17 @@ Supabase proporciona a las Edge Functions SUPABASE_URL, SUPABASE_ANON_KEY y SUPA
 7. Confirmar en Authentication -> Users y organization_memberships que el usuario existe y tiene rol coach.
 
 No incorporar datos reales de atletas hasta validar aislamiento entre coaches y administrador mediante cuentas de prueba.
+
+## Seguridad de acceso (migration 20261117201547)
+
+La migracion `supabase/migrations/20261117201547_restrict_private_rls_to_authenticated.sql` cambia las 31 politicas RLS de las tablas privadas del rol PUBLIC a AUTHENTICATED, preservando sus expresiones de acceso. Tambien revoca la ejecucion anonima de las funciones helper `can_access_athlete`, `is_org_admin` e `is_org_member`, manteniendo sus permisos para `authenticated` y `service_role`.
+
+La migracion se aplico al proyecto HF App y se verifico que las 31 politicas quedaron en `{authenticated}` y que `anon` no tiene permiso EXECUTE sobre esas tres funciones.
+
+## Pendientes de configuracion manual de Auth
+
+- En Authentication -> URL Configuration, establecer Site URL en `https://hf-coach-central.vercel.app` y agregar esa URL exacta (o `https://hf-coach-central.vercel.app/**`) a Redirect URLs.
+- En Authentication -> SMTP Settings, configurar proveedor SMTP propio y remitente verificado. El SMTP de prueba de Supabase solo permite destinatarios autorizados del equipo y tiene limites reducidos.
+- Activar leaked password protection en Auth password security.
+
+No invitar coaches externos hasta finalizar esos ajustes y realizar una prueba controlada de activacion.
