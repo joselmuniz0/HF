@@ -38,7 +38,6 @@ Deno.serve(async (req) => {
       return json({ error: "Ingresá un nombre y correo electrónico válidos." }, 400);
     }
 
-    // La URL del panel es pública; el secreto permite sobreescribirla si cambia el dominio.
     const centralSiteUrl = (Deno.env.get("HF_CENTRAL_SITE_URL") || "https://hf-coach-central.vercel.app")
       .trim()
       .replace(/\/+$/, "");
@@ -55,14 +54,27 @@ Deno.serve(async (req) => {
       .eq("user_id", authData.user.id)
       .maybeSingle();
     if (membershipError) throw membershipError;
-    if (membership?.role !== "admin") return json({ error: "Solo un administrador de la organización puede invitar coaches." }, 403);
+    if (membership?.role !== "admin") {
+      return json({ error: "Solo un administrador de la organización puede generar invitaciones de coaches." }, 403);
+    }
 
-    const { data: invitation, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: displayName, hf_organization_id: organizationId },
-      redirectTo: inviteRedirectTo,
+    // generateLink crea el enlace de invitación, pero no envía un correo.
+    // El enlace se entrega únicamente al administrador autenticado para compartirlo por un canal privado.
+    const { data: invitation, error: inviteError } = await adminClient.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: {
+        data: { full_name: displayName, hf_organization_id: organizationId },
+        redirectTo: inviteRedirectTo,
+      },
     });
     if (inviteError) throw inviteError;
     if (!invitation.user) throw new Error("Supabase no devolvió el usuario invitado.");
+
+    const actionLink = invitation.properties?.action_link;
+    if (!actionLink || !actionLink.startsWith(url)) {
+      throw new Error("Supabase no devolvió un enlace de activación válido.");
+    }
 
     const userId = invitation.user.id;
     const { error: memberInsertError } = await adminClient.from("organization_memberships").upsert({
@@ -76,7 +88,14 @@ Deno.serve(async (req) => {
     }, { onConflict: "organization_id,user_id" });
     if (profileError) throw profileError;
 
-    return json({ ok: true, user_id: userId, email, role: "coach", message: "Invitación enviada. El coach debe aceptar el correo y establecer su contraseña." });
+    return json({
+      ok: true,
+      user_id: userId,
+      email,
+      role: "coach",
+      action_link: actionLink,
+      message: "Enlace de activación generado. Compartilo de forma individual con el coach.",
+    });
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 400);
   }
