@@ -8,6 +8,7 @@ unzip -oq .hf-central/HF-Central-Overlay.zip -d .hf-central
 
 # Aplicar el flujo de activación al panel estático sin modificar el ZIP fuente original.
 node scripts/patch-central-stage2.mjs
+node scripts/patch-central-stage3.mjs
 
 # Mantener la Edge Function desplegable en Supabase y dentro del paquete de configuración.
 mkdir -p .hf-central/supabase/functions/invite-coach
