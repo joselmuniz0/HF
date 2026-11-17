@@ -38,9 +38,12 @@ Deno.serve(async (req) => {
       return json({ error: "Ingresá un nombre y correo electrónico válidos." }, 400);
     }
 
-    const centralSiteUrl = Deno.env.get("HF_CENTRAL_SITE_URL")?.trim().replace(/\/+$/, "");
-    if (!centralSiteUrl || !centralSiteUrl.startsWith("https://")) {
-      throw new Error("Falta configurar HF_CENTRAL_SITE_URL con la URL HTTPS del panel HF Coach Central.");
+    // La URL del panel es pública; el secreto permite sobreescribirla si cambia el dominio.
+    const centralSiteUrl = (Deno.env.get("HF_CENTRAL_SITE_URL") || "https://hf-coach-central.vercel.app")
+      .trim()
+      .replace(/\/+$/, "");
+    if (!centralSiteUrl.startsWith("https://")) {
+      throw new Error("HF_CENTRAL_SITE_URL debe ser una URL HTTPS válida.");
     }
     const inviteRedirectTo = `${centralSiteUrl}/?flow=invite`;
 
