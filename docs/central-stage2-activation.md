@@ -1,72 +1,66 @@
-# HF Coach Central - etapa 2: activacion de coaches
+# HF Coach Central — invitaciones manuales sin SMTP
 
-## Cambios incluidos
+## Objetivo
 
-- El panel central muestra una pantalla de activacion cuando el coach llega desde una invitacion con el parametro flow=invite.
-- El coach define y confirma una contrasena de al menos 10 caracteres.
-- El cliente Supabase usa flujo implicit solo para el callback de invitacion y conserva PKCE para el inicio de sesion habitual del administrador.
-- La Edge Function supabase/functions/invite-coach/index.ts verifica la sesion del solicitante y exige rol admin en la organizacion antes de invitar.
-- El destino del correo usa por defecto https://hf-coach-central.vercel.app; HF_CENTRAL_SITE_URL es un override opcional para cambiar el dominio.
-- Vercel genera config.js en el proceso de build a partir de HF_SUPABASE_URL y HF_SUPABASE_PUBLISHABLE_KEY. Son variables publicas; nunca colocar service_role en Vercel.
+La etapa actual permite invitar coaches sin contratar un dominio ni un proveedor de correo. El administrador genera un enlace individual desde HF Central y lo comparte directamente por WhatsApp u otro canal privado.
 
-## Vercel
+La función utiliza `auth.admin.generateLink({ type: 'invite' })` de Supabase. Supabase crea el enlace de activación, pero no envía un correo. El enlace se devuelve únicamente al administrador autenticado que tiene rol `admin` en la organización.
 
-Configurar las variables de entorno para Production y, si se desea probar antes de publicar, tambien para Preview:
+## Flujo del administrador
 
-- HF_SUPABASE_URL: URL HTTPS del proyecto Supabase.
-- HF_SUPABASE_PUBLISHABLE_KEY: clave publishable del proyecto; tambien se admite la clave publica legacy anon.
+1. Abrir [HF Coach Central](https://hf-coach-central.vercel.app/) e iniciar sesión con la cuenta administradora.
+2. En la sección **Coaches**, completar nombre y correo del nuevo coach.
+3. Pulsar **Invitar coach**.
+4. HF Central genera el enlace individual y muestra las opciones **Copiar enlace** y **Compartir por WhatsApp**.
+5. Enviar el enlace únicamente al coach destinatario, en una conversación privada.
 
-El archivo vercel.json ejecuta scripts/extract-central-overlay.sh y despues scripts/build-central-config.mjs. El directorio de publicacion es .hf-central/admin.
+El alta queda asociada a la organización y al rol `coach`. La función también crea/actualiza el perfil de coach. No se entrega la clave `service_role` al navegador: permanece en el entorno de Supabase Edge Functions.
 
-## Supabase Auth URLs
+## Flujo del coach
 
-En Authentication -> URL Configuration:
+1. Abrir el enlace personal desde el navegador.
+2. HF Central valida la sesión temporal de invitación.
+3. El coach define y confirma una contraseña personal de al menos 10 caracteres.
+4. La cuenta se activa y se cierra la sesión temporal.
+5. El coach puede ingresar en HF Coach Android con su correo y contraseña.
 
-- Site URL: URL HTTPS del panel Vercel.
-- Redirect URLs: agregar la URL exacta del panel y el patron https://<dominio-vercel>/**.
+El enlace de invitación es de un solo uso. Su vencimiento depende de la configuración de validez de enlaces de Supabase Auth. Si ya se utilizó o venció, el administrador debe generar otra invitación.
 
-La funcion envia invitaciones a https://<dominio-vercel>/?flow=invite. Esa URL debe estar permitida en la lista Redirect URLs.
+## Configuración necesaria de Supabase Auth
 
-## SMTP
+En **Authentication → URL Configuration** del proyecto HF App:
 
-En Authentication -> SMTP Settings, configurar un proveedor SMTP propio con remitente verificado, host, puerto, usuario y contrasena. Probar primero con una cuenta controlada. El SMTP de prueba no debe usarse como servicio de produccion.
+- **Site URL:** `https://hf-coach-central.vercel.app`
+- **Redirect URLs:** agregar exactamente `https://hf-coach-central.vercel.app/?flow=invite`
 
-## Edge Function
+Esta configuración es necesaria para que Supabase permita volver al panel después de validar la invitación. No agregar dominios de Preview a producción salvo que se utilicen expresamente.
 
-La fuente versionada esta en supabase/functions/invite-coach/index.ts. Para actualizar el despliegue desde el Dashboard:
+Enlace directo: https://supabase.com/dashboard/project/mzjwiwyelabulwhlrgrt/auth/url-configuration
 
-1. Abrir Edge Functions -> invite-coach -> Code.
-2. Reemplazar el codigo por el contenido del archivo versionado.
-3. Confirmar que Verify JWT with legacy secret permanezca OFF, porque la funcion valida el bearer token mediante auth.getUser() y verifica rol admin en la base.
-4. Deploy new version.
-5. No es necesario configurar HF_CENTRAL_SITE_URL mientras se use https://hf-coach-central.vercel.app. Si el dominio cambia, configurar ese secreto con la nueva URL HTTPS, sin barra final.
+## Correo y recuperación de contraseña
 
-Supabase proporciona a las Edge Functions SUPABASE_URL, SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY como variables de entorno del proyecto. La clave de servicio solo se usa dentro de la funcion y nunca debe incorporarse a Android, navegador, GitHub o Vercel.
+- Para crear y compartir invitaciones de coaches no se necesita SMTP.
+- No se envía ningún correo durante este flujo.
+- Mientras no exista un proveedor SMTP configurado, las funciones estándar de recuperación por correo de Supabase no están disponibles para coaches externos. La recuperación asistida debe resolverse mediante un flujo administrativo separado antes de ofrecer esa función.
+- No compartir enlaces de activación por grupos ni publicarlos en espacios abiertos.
 
-## Prueba controlada
+## Archivos versionados
 
-1. Ingresar al panel con la cuenta admin.
-2. Invitar una direccion de correo de prueba.
-3. Confirmar la recepcion del mensaje y abrir el enlace.
-4. Comprobar que el navegador abre el panel con ?flow=invite y presenta el formulario de activacion.
-5. Definir contrasena, confirmar y comprobar el mensaje de activacion.
-6. Ingresar nuevamente al panel y, luego, a Android con esa cuenta.
-7. Confirmar en Authentication -> Users y organization_memberships que el usuario existe y tiene rol coach.
+- `supabase/functions/invite-coach/index.ts`: genera el enlace con la clave de servicio en el servidor, exige sesión válida y rol admin, crea la membresía coach y el perfil.
+- `scripts/patch-central-stage2.mjs`: incorpora la pantalla para definir contraseña.
+- `scripts/patch-central-stage3.mjs`: incorpora el enlace visible, copia y envío por WhatsApp.
+- `scripts/extract-central-overlay.sh`: aplica los parches durante la compilación y el despliegue.
 
-No incorporar datos reales de atletas hasta validar aislamiento entre coaches y administrador mediante cuentas de prueba.
+La Edge Function se despliega con `verify_jwt=false` porque valida expresamente el bearer token con `auth.getUser()` y comprueba el rol de administrador en la base de datos. No modificar esa condición sin revisar primero el flujo de autenticación.
 
-## Seguridad de acceso (migration 20261117201547)
+## Prueba controlada antes del piloto
 
-La migracion `supabase/migrations/20261117201547_restrict_private_rls_to_authenticated.sql` cambia las 31 politicas RLS de las tablas publicas privadas del rol PUBLIC a AUTHENTICATED, preservando sus expresiones de acceso. Tambien revoca la ejecucion anonima de las funciones helper `can_access_athlete`, `is_org_admin` e `is_org_member`, manteniendo sus permisos para `authenticated` y `service_role`.
+1. Confirmar que Site URL y Redirect URL estén configuradas.
+2. Iniciar sesión como administrador y generar una invitación para una dirección de correo controlada y todavía no registrada.
+3. Compartir el enlace por WhatsApp o copiarlo a un navegador.
+4. Establecer la contraseña y confirmar la activación.
+5. Verificar en Authentication → Users que el usuario figure como confirmado y en `organization_memberships` que tenga rol `coach`.
+6. Iniciar sesión con esa cuenta en HF Coach Android.
+7. Comprobar el aislamiento de datos entre coaches antes de cargar información real de atletas.
 
-La migracion `supabase/migrations/20261117202042_restrict_private_storage_policies_to_authenticated.sql` restringe de `PUBLIC` a `authenticated` las tres politicas del bucket privado `athlete-media`.
-
-Ambas migraciones se aplicaron al proyecto HF App. Se verifico que las 31 politicas de `public` y las tres politicas de `storage.objects` quedaron en `{authenticated}`, y que `anon` no tiene permiso EXECUTE sobre las tres funciones helper.
-
-## Pendientes de configuracion manual de Auth
-
-- En Authentication -> URL Configuration, establecer Site URL en `https://hf-coach-central.vercel.app` y agregar esa URL exacta (o `https://hf-coach-central.vercel.app/**`) a Redirect URLs.
-- En Authentication -> SMTP Settings, configurar proveedor SMTP propio y remitente verificado. El SMTP de prueba de Supabase solo permite destinatarios autorizados del equipo y tiene limites reducidos.
-- Activar leaked password protection en Auth password security.
-
-No invitar coaches externos hasta finalizar esos ajustes y realizar una prueba controlada de activacion.
+La interpretación de evaluaciones y las decisiones deportivas permanecen bajo control del coach humano durante el piloto.
