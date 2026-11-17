@@ -40,7 +40,7 @@ supabase secrets set SUPABASE_URL=https://<PROJECT_REF>.supabase.co SUPABASE_ANO
 supabase functions deploy invite-coach
 ```
 
-Configurar un proveedor SMTP/correo en Supabase Auth para que las invitaciones puedan entregarse. El endpoint verifica que quien invita tenga rol `admin` en esa organización.
+El endpoint genera enlaces de invitación sin enviar correos, por lo que no requiere SMTP. El administrador comparte cada enlace individual por WhatsApp u otro canal privado. El endpoint exige sesión válida y rol `admin` en esa organización. Configurar Site URL y Redirect URL de Supabase según `docs/central-stage2-activation.md`.
 
 ## 3. Publicar el panel web
 
