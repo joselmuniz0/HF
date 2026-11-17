@@ -9,6 +9,7 @@ on:
       - '.central-source/**'
       - 'scripts/extract-central-overlay.sh'
       - 'scripts/patch-central-stage2.mjs'
+      - 'scripts/patch-central-stage3.mjs'
       - 'scripts/build-central-config.mjs'
       - 'supabase/functions/**'
       - 'supabase/migrations/**'
