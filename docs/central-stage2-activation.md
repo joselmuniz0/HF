@@ -6,7 +6,7 @@
 - El coach define y confirma una contrasena de al menos 10 caracteres.
 - El cliente Supabase usa flujo implicit solo para el callback de invitacion y conserva PKCE para el inicio de sesion habitual del administrador.
 - La Edge Function supabase/functions/invite-coach/index.ts verifica la sesion del solicitante y exige rol admin en la organizacion antes de invitar.
-- El destino del correo se construye con HF_CENTRAL_SITE_URL.
+- El destino del correo usa por defecto https://hf-coach-central.vercel.app; HF_CENTRAL_SITE_URL es un override opcional para cambiar el dominio.
 - Vercel genera config.js en el proceso de build a partir de HF_SUPABASE_URL y HF_SUPABASE_PUBLISHABLE_KEY. Son variables publicas; nunca colocar service_role en Vercel.
 
 ## Vercel
@@ -39,7 +39,7 @@ La fuente versionada esta en supabase/functions/invite-coach/index.ts. Para actu
 2. Reemplazar el codigo por el contenido del archivo versionado.
 3. Confirmar que Verify JWT with legacy secret permanezca OFF, porque la funcion valida el bearer token mediante auth.getUser() y verifica rol admin en la base.
 4. Deploy new version.
-5. En Edge Functions -> Secrets, configurar HF_CENTRAL_SITE_URL con la URL HTTPS de Vercel, sin barra final.
+5. No es necesario configurar HF_CENTRAL_SITE_URL mientras se use https://hf-coach-central.vercel.app. Si el dominio cambia, configurar ese secreto con la nueva URL HTTPS, sin barra final.
 
 Supabase proporciona a las Edge Functions SUPABASE_URL, SUPABASE_ANON_KEY y SUPABASE_SERVICE_ROLE_KEY como variables de entorno del proyecto. La clave de servicio solo se usa dentro de la funcion y nunca debe incorporarse a Android, navegador, GitHub o Vercel.
 
