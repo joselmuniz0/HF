@@ -11,6 +11,7 @@ on:
       - 'scripts/patch-central-stage2.mjs'
       - 'scripts/build-central-config.mjs'
       - 'supabase/functions/**'
+      - 'supabase/migrations/**'
       - 'docs/**'
       - '.github/workflows/build-apk.yml'
 
