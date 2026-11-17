@@ -59,7 +59,7 @@ No incorporar datos reales de atletas hasta validar aislamiento entre coaches y 
 
 La migracion `supabase/migrations/20261117201547_restrict_private_rls_to_authenticated.sql` cambia las 31 politicas RLS de las tablas publicas privadas del rol PUBLIC a AUTHENTICATED, preservando sus expresiones de acceso. Tambien revoca la ejecucion anonima de las funciones helper `can_access_athlete`, `is_org_admin` e `is_org_member`, manteniendo sus permisos para `authenticated` y `service_role`.
 
-La migracion `supabase/migrations/20261117202100_restrict_private_storage_policies_to_authenticated.sql` restringe de `PUBLIC` a `authenticated` las tres politicas del bucket privado `athlete-media`.
+La migracion `supabase/migrations/20261117202042_restrict_private_storage_policies_to_authenticated.sql` restringe de `PUBLIC` a `authenticated` las tres politicas del bucket privado `athlete-media`.
 
 Ambas migraciones se aplicaron al proyecto HF App. Se verifico que las 31 politicas de `public` y las tres politicas de `storage.objects` quedaron en `{authenticated}`, y que `anon` no tiene permiso EXECUTE sobre las tres funciones helper.
 
