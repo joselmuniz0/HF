@@ -174,15 +174,15 @@ const passwordRecoveryCode = [
   '  $("loginPanel").hidden = false;',
   '}',
   ''
-].join("\\n");
+].join("\n");
 
 if (!app.includes('async function requestPasswordRecovery()')) {
-  app += "\\n" + passwordRecoveryCode;
+  app += "\n" + passwordRecoveryCode;
 }
 app = replaceRequired(
   app,
   "$('loginBtn').addEventListener('click', signIn);",
-  "$('passwordRecoveryRequestBtn').addEventListener('click', requestPasswordRecovery);\\n$('passwordResetSaveBtn').addEventListener('click', completePasswordRecovery);\\n$('passwordResetBackBtn').addEventListener('click', returnToPasswordLogin);\\n$('loginBtn').addEventListener('click', signIn);",
+  "$('passwordRecoveryRequestBtn').addEventListener('click', requestPasswordRecovery);\n$('passwordResetSaveBtn').addEventListener('click', completePasswordRecovery);\n$('passwordResetBackBtn').addEventListener('click', returnToPasswordLogin);\n$('loginBtn').addEventListener('click', signIn);",
   'eventos de recuperación de contraseña'
 );
 fs.writeFileSync(appPath, app, 'utf8');
@@ -222,8 +222,8 @@ if (!html.includes('id="passwordRecoveryPanel"')) {
     '          <p id="passwordRecoveryRequestStatus" class="notice" role="status" aria-live="polite"></p>',
     '        </div>',
     '      </details>'
-  ].join('\\n');
-  html = replaceRequired(html, '      <button id="loginBtn" class="primary">Ingresar</button>', passwordRecoveryMarkup + '\\n      <button id="loginBtn" class="primary">Ingresar</button>', 'acceso a recuperación de contraseña');
+  ].join('\n');
+  html = replaceRequired(html, '      <button id="loginBtn" class="primary">Ingresar</button>', passwordRecoveryMarkup + '\n      <button id="loginBtn" class="primary">Ingresar</button>', 'acceso a recuperación de contraseña');
 }
 if (!html.includes('id="passwordResetPanel"')) {
   const passwordResetPanel = [
@@ -239,8 +239,8 @@ if (!html.includes('id="passwordResetPanel"')) {
     '      <button id="passwordResetBackBtn" type="button" class="quiet" hidden>Volver al ingreso</button>',
     '    </section>',
     ''
-  ].join('\\n');
-  html = replaceRequired(html, '  <main class="shell">\\n', '  <main class="shell">\\n' + passwordResetPanel, 'pantalla de restablecimiento');
+  ].join('\n');
+  html = replaceRequired(html, '  <main class="shell">\n', '  <main class="shell">\n' + passwordResetPanel, 'pantalla de restablecimiento');
 }
 \nif (!html.includes('<script src="./config.js"></script>')) {
   html = replaceRequired(html, '  <script type="module" src="./app.js"></script>', '  <script src="./config.js"></script>\n  <script type="module" src="./app.js"></script>', 'configuración runtime del panel');
