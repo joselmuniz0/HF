@@ -107,8 +107,13 @@
 
   async function finishRecoveryFromUrl() {
     const params = new URLSearchParams(window.location.search);
+    const tokenHash = params.get("token_hash");
+    const tokenType = params.get("type");
     const code = params.get("code");
-    if (!code) return;
+
+    // Prefer the token-hash path: it can be verified on the device that opens
+    // the email, without requiring the PKCE verifier stored on the requesting device.
+    if (!tokenHash && !code) return;
 
     const loginPanel = byId("loginPanel");
     const inviteSetupPanel = byId("inviteSetupPanel");
@@ -126,7 +131,22 @@
 
     try {
       const client = await getRecoveryClient();
-      const result = await client.auth.exchangeCodeForSession(code);
+      let result;
+
+      if (tokenHash) {
+        if (tokenType !== "recovery") {
+          throw new Error("El enlace no corresponde a una recuperación de contraseña.");
+        }
+        result = await client.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: "recovery"
+        });
+      } else {
+        // Backward compatibility for existing PKCE links. These must be opened
+        // in the same browser and device that requested the reset.
+        result = await client.auth.exchangeCodeForSession(code);
+      }
+
       if (result.error) throw result.error;
       if (!result.data || !result.data.session) {
         throw new Error("Supabase no devolvió una sesión válida. El enlace pudo vencer o ya haberse utilizado.");
