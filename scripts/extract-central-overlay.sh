@@ -5,6 +5,7 @@ mkdir -p .hf-central
 cat .central-source/*.b64 | base64 --decode > .hf-central/HF-Central-Overlay.zip
 echo "0de87f14c863b7a7cb00aaa2f3519f848915f00b62f5fb11410bcbd6220dc843  .hf-central/HF-Central-Overlay.zip" | sha256sum --check
 unzip -oq .hf-central/HF-Central-Overlay.zip -d .hf-central
+cp scripts/hf-central-recovery.js .hf-central/admin/recovery.js
 
 # Aplicar el flujo de activación al panel estático sin modificar el ZIP fuente original.
 node scripts/patch-central-stage2.mjs
@@ -28,6 +29,7 @@ rm -f .hf-central/HF-Central-Overlay.zip
 test -f .hf-central/admin/index.html
 test -f .hf-central/admin/app.js
 test -f .hf-central/admin/styles.css
+test -f .hf-central/admin/recovery.js
 test -f .hf-central/platform/app-overlay/reports.js
 test -f .hf-central/supabase/functions/invite-coach/index.ts
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts
