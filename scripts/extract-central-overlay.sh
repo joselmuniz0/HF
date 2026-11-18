@@ -32,7 +32,6 @@ test -f .hf-central/platform/app-overlay/reports.js
 test -f .hf-central/supabase/functions/invite-coach/index.ts
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts
 test -f .hf-central/supabase/functions/approve-athlete-access/index.ts
-test -f .hf-central/supabase/functions/approve-athlete-access/index.ts
 grep -q 'function loadAthletePortal' .hf-central/admin/app.js
 grep -q 'function downloadOperationalCsv' .hf-central/admin/app.js
 grep -q 'athleteRegistrationForm' .hf-central/admin/index.html
