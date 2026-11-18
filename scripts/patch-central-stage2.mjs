@@ -101,8 +101,7 @@ if (!app.includes('async function handleInviteLanding()')) {
     "    showInviteStatus(error.message || String(error), 'error');",
     '  }',
     '}',
-    ''
-
+    '',
     'async function copyCoachConfigValue(elementId, statusId) {',
     '  const value = document.getElementById(elementId)?.textContent?.trim() || "";',
     '  const status = document.getElementById(statusId);',
