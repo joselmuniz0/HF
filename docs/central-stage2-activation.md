@@ -18,13 +18,26 @@ El alta queda asociada a la organización y al rol `coach`. La función también
 
 ## Flujo del coach
 
-1. Abrir el enlace personal desde el navegador.
+1. Abrir el enlace personal desde el navegador del teléfono o de una computadora.
 2. HF Central valida la sesión temporal de invitación.
 3. El coach define y confirma una contraseña personal de al menos 10 caracteres.
 4. La cuenta se activa y se cierra la sesión temporal.
-5. El coach puede ingresar en HF Coach Android con su correo y contraseña.
+5. En la misma pantalla aparece el botón **Descargar HF Coach Android**, los pasos de instalación y los datos públicos para configurar Intercambio.
+6. El coach instala el APK, abre **Intercambio**, copia la URL y la clave pública de Supabase que aparecen en esa pantalla e inicia sesión con el mismo correo y contraseña.
 
 El enlace de invitación es de un solo uso. Su vencimiento depende de la configuración de validez de enlaces de Supabase Auth. Si ya se utilizó o venció, el administrador debe generar otra invitación.
+
+## Descarga Android para coaches
+
+El APK de prueba del piloto se distribuye desde Vercel Blob, con una URL pública estable:
+
+- URL: https://ntui7yxdugxgtgoa.public.blob.vercel-storage.com/releases/HF-Coach.apk?download=1
+- Ruta del blob: `releases/HF-Coach.apk`
+- El navegador descarga el archivo como `HF-Coach.apk`.
+- La pantalla de activación de HF Central muestra este botón después de guardar la contraseña.
+- La clave de escritura de Blob permanece en el entorno de Vercel. Nunca incluir `BLOB_READ_WRITE_TOKEN` en la aplicación, HTML, JavaScript del navegador ni repositorio.
+
+El APK actual corresponde a la compilación debug del 18/11/2026, workflow run 44333402442, commit `40d2d3dc`. Para reemplazarlo por una versión posterior, subir el nuevo APK al mismo pathname con `allowOverwrite: true` desde un entorno autorizado. La URL pública no cambia.
 
 ## Configuración necesaria de Supabase Auth
 
