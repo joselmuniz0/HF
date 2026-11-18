@@ -242,7 +242,8 @@ if (!html.includes('id="passwordResetPanel"')) {
   ].join('\n');
   html = replaceRequired(html, '  <main class="shell">\n', '  <main class="shell">\n' + passwordResetPanel, 'pantalla de restablecimiento');
 }
-\nif (!html.includes('<script src="./config.js"></script>')) {
+
+if (!html.includes('<script src="./config.js"></script>')) {
   html = replaceRequired(html, '  <script type="module" src="./app.js"></script>', '  <script src="./config.js"></script>\n  <script type="module" src="./app.js"></script>', 'configuración runtime del panel');
 }
 fs.writeFileSync(htmlPath, html, 'utf8');
