@@ -101,8 +101,90 @@ if (!app.includes("$('inviteSetupForm').addEventListener('submit', setInvitePass
   app = replaceRequired(app, inviteListener, inviteListener + "\n$('inviteSetupForm').addEventListener('submit', setInvitePassword);", 'listener del formulario de invitación');
 }
 if (!app.includes('handleInviteLanding();')) {
-  app = replaceRequired(app, 'setConfigInputs();', 'setConfigInputs();\nhandleInviteLanding();', 'inicio del flujo de activación');
+  app = replaceRequired(app, 'setConfigInputs();', 'setConfigInputs();\nhandleInviteLanding();\nhandlePasswordRecoveryLanding();', 'inicio de los flujos de autenticación');
 }
+
+const passwordRecoveryCode = [
+  'async function requestPasswordRecovery() {',
+  '  const email = $("recoveryEmail").value.trim().toLowerCase();',
+  '  const status = $("passwordRecoveryRequestStatus");',
+  '  if (!email) { status.textContent = "Ingresá el correo de tu cuenta."; return; }',
+  '  status.textContent = "Solicitando el enlace de recuperación…";',
+  '  status.className = "notice";',
+  '  try {',
+  '    const { error } = await getClient().auth.resetPasswordForEmail(email);',
+  '    if (error) throw error;',
+  '    status.textContent = "Solicitud enviada. Si el correo está autorizado para recibir mensajes de este proyecto, vas a recibir un enlace. Revisá Recibidos y Spam."; ',
+  '    status.className = "notice success";',
+  '  } catch (error) {',
+  '    status.textContent = "No se pudo enviar el enlace: " + (error.message || String(error));',
+  '    status.className = "notice error";',
+  '  }',
+  '}',
+  '',
+  'async function handlePasswordRecoveryLanding() {',
+  '  const params = new URLSearchParams(window.location.search);',
+  '  if (!params.has("code")) return;',
+  '  $("loginPanel").hidden = true;',
+  '  $("inviteSetupPanel").hidden = true;',
+  '  $("inviteDonePanel").hidden = true;',
+  '  $("passwordResetPanel").hidden = false;',
+  '  $("passwordResetStatus").textContent = "Validando el enlace de recuperación…";',
+  '  try {',
+  '    const { data, error } = await getClient().auth.getSession();',
+  '    if (error) throw error;',
+  '    if (!data.session) throw new Error("El enlace venció, ya fue utilizado o no es válido. Solicitá uno nuevo.");',
+  '    $("passwordRecoveryEmail").textContent = data.session.user.email || "";',
+  '    $("passwordResetForm").hidden = false;',
+  '    $("passwordResetStatus").textContent = "Enlace validado. Elegí una contraseña nueva de al menos 10 caracteres."; ',
+  '    $("passwordResetStatus").className = "notice success";',
+  '  } catch (error) {',
+  '    $("passwordResetForm").hidden = true;',
+  '    $("passwordResetStatus").textContent = "No se pudo validar el enlace: " + (error.message || String(error));',
+  '    $("passwordResetStatus").className = "notice error";',
+  '  }',
+  '}',
+  '',
+  'async function completePasswordRecovery() {',
+  '  const password = $("recoveryNewPassword").value;',
+  '  const confirmation = $("recoveryConfirmPassword").value;',
+  '  const status = $("passwordResetStatus");',
+  '  if (password.length < 10) { status.textContent = "La contraseña debe tener al menos 10 caracteres."; status.className = "notice error"; return; }',
+  '  if (password !== confirmation) { status.textContent = "Las contraseñas no coinciden."; status.className = "notice error"; return; }',
+  '  status.textContent = "Actualizando la contraseña…";',
+  '  status.className = "notice";',
+  '  try {',
+  '    const { error } = await getClient().auth.updateUser({ password });',
+  '    if (error) throw error;',
+  '    await getClient().auth.signOut();',
+  '    $("passwordResetForm").hidden = true;',
+  '    $("passwordResetBackBtn").hidden = false;',
+  '    status.textContent = "Contraseña actualizada. Ya podés volver al ingreso e iniciar sesión con tu nueva contraseña."; ',
+  '    status.className = "notice success";',
+  '    history.replaceState({}, document.title, window.location.pathname);',
+  '  } catch (error) {',
+  '    status.textContent = "No se pudo actualizar la contraseña: " + (error.message || String(error));',
+  '    status.className = "notice error";',
+  '  }',
+  '}',
+  '',
+  'function returnToPasswordLogin() {',
+  '  $("passwordResetPanel").hidden = true;',
+  '  $("passwordResetBackBtn").hidden = true;',
+  '  $("loginPanel").hidden = false;',
+  '}',
+  ''
+].join("\\n");
+
+if (!app.includes('async function requestPasswordRecovery()')) {
+  app += "\\n" + passwordRecoveryCode;
+}
+app = replaceRequired(
+  app,
+  "$('loginBtn').addEventListener('click', signIn);",
+  "$('passwordRecoveryRequestBtn').addEventListener('click', requestPasswordRecovery);\\n$('passwordResetSaveBtn').addEventListener('click', completePasswordRecovery);\\n$('passwordResetBackBtn').addEventListener('click', returnToPasswordLogin);\\n$('loginBtn').addEventListener('click', signIn);",
+  'eventos de recuperación de contraseña'
+);
 fs.writeFileSync(appPath, app, 'utf8');
 
 let html = fs.readFileSync(htmlPath, 'utf8');
@@ -130,7 +212,37 @@ if (!html.includes('id="inviteSetupPanel"')) {
   ].join('\n');
   html = replaceRequired(html, '  <main class="shell">\n', '  <main class="shell">\n' + invitePanels, 'paneles de activación');
 }
-if (!html.includes('<script src="./config.js"></script>')) {
+if (!html.includes('id="passwordRecoveryPanel"')) {
+  const passwordRecoveryMarkup = [
+    '      <details id="passwordRecoveryPanel" class="registration-box">',
+    '        <summary>¿Olvidaste tu contraseña?</summary>',
+    '        <div class="stack-form">',
+    '          <label>Correo de tu cuenta<input id="recoveryEmail" type="email" required autocomplete="email" placeholder="tu-correo@gmail.com"></label>',
+    '          <button id="passwordRecoveryRequestBtn" type="button" class="primary">Enviar enlace de recuperación</button>',
+    '          <p id="passwordRecoveryRequestStatus" class="notice" role="status" aria-live="polite"></p>',
+    '        </div>',
+    '      </details>'
+  ].join('\\n');
+  html = replaceRequired(html, '      <button id="loginBtn" class="primary">Ingresar</button>', passwordRecoveryMarkup + '\\n      <button id="loginBtn" class="primary">Ingresar</button>', 'acceso a recuperación de contraseña');
+}
+if (!html.includes('id="passwordResetPanel"')) {
+  const passwordResetPanel = [
+    '    <section id="passwordResetPanel" class="panel login-panel" hidden>',
+    '      <h2>Restablecer contraseña</h2>',
+    '      <p>Cuenta: <strong id="passwordRecoveryEmail">—</strong></p>',
+    '      <div id="passwordResetForm" class="stack-form">',
+    '        <label>Nueva contraseña<input id="recoveryNewPassword" type="password" minlength="10" autocomplete="new-password" required></label>',
+    '        <label>Confirmar contraseña<input id="recoveryConfirmPassword" type="password" minlength="10" autocomplete="new-password" required></label>',
+    '        <button id="passwordResetSaveBtn" type="button" class="primary">Guardar nueva contraseña</button>',
+    '      </div>',
+    '      <p id="passwordResetStatus" class="notice" role="status" aria-live="polite"></p>',
+    '      <button id="passwordResetBackBtn" type="button" class="quiet" hidden>Volver al ingreso</button>',
+    '    </section>',
+    ''
+  ].join('\\n');
+  html = replaceRequired(html, '  <main class="shell">\\n', '  <main class="shell">\\n' + passwordResetPanel, 'pantalla de restablecimiento');
+}
+\nif (!html.includes('<script src="./config.js"></script>')) {
   html = replaceRequired(html, '  <script type="module" src="./app.js"></script>', '  <script src="./config.js"></script>\n  <script type="module" src="./app.js"></script>', 'configuración runtime del panel');
 }
 fs.writeFileSync(htmlPath, html, 'utf8');
