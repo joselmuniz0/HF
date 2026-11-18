@@ -81,10 +81,6 @@ begin
       using errcode = '22023';
   end if;
 
-  if nullif(p_measurements->'height'->>'metric_value', '') is not null then
-    null;
-  end if;
-
   if nullif(p_athlete->>'snatch_kg', '') is not null
      and ((p_athlete->>'snatch_kg')::numeric < 0 or (p_athlete->>'snatch_kg')::numeric > 500) then
     raise exception 'El arranque RM debe estar entre 0 y 500 kg.'
@@ -185,6 +181,24 @@ begin
         using errcode = '22023';
     end if;
 
+    if nullif(v_item->>'metric_value', '') is null
+       or (v_item->>'metric_value')::numeric <= 0 then
+      raise exception 'El valor de la medición debe ser mayor que cero.'
+        using errcode = '22023';
+    end if;
+
+    if v_metric_key = 'height'
+       and (v_item->>'metric_value')::numeric not between 50 and 250 then
+      raise exception 'La altura debe estar entre 50 y 250 cm.'
+        using errcode = '22023';
+    end if;
+
+    if v_metric_key = 'body_weight'
+       and (v_item->>'metric_value')::numeric not between 1 and 300 then
+      raise exception 'El peso corporal debe estar entre 1 y 300 kg.'
+        using errcode = '22023';
+    end if;
+
     v_row_id := coalesce(nullif(v_item->>'id', '')::uuid, gen_random_uuid());
 
     insert into public.athlete_measurements (
@@ -244,6 +258,13 @@ begin
     v_record_type := coalesce(nullif(v_item->>'record_type', ''), 'tested');
     if v_record_type not in ('tested', 'estimated', 'competition') then
       raise exception 'El tipo de marca inicial no es válido.'
+        using errcode = '22023';
+    end if;
+
+    if nullif(v_item->>'record_value_kg', '') is null
+       or (v_item->>'record_value_kg')::numeric <= 0
+       or (v_item->>'record_value_kg')::numeric > 500 then
+      raise exception 'La marca inicial debe ser mayor que cero y no superar 500 kg.'
         using errcode = '22023';
     end if;
 
