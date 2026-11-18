@@ -87,11 +87,11 @@ if (!app.includes('copyAndroidSupabaseUrl')) {
   const mobileCopyListeners = [
     "document.getElementById('copyAndroidSupabaseUrl')?.addEventListener('click', () => copyCoachConfigValue('androidSupabaseUrl', 'androidSupabaseUrlStatus'));",
     "document.getElementById('copyAndroidSupabaseKey')?.addEventListener('click', () => copyCoachConfigValue('androidSupabaseKey', 'androidSupabaseKeyStatus'));"
-  ].join('\\n');
+  ].join('\n');
   app = replaceRequired(
     app,
     "$('loginBtn').addEventListener('click', signIn);",
-    mobileCopyListeners + "\\n$('loginBtn').addEventListener('click', signIn);",
+    mobileCopyListeners + "\n$('loginBtn').addEventListener('click', signIn);",
     'copiado de configuración Android'
   );
 }
