@@ -118,13 +118,6 @@ const inviteListener = "$('inviteForm').addEventListener('submit', inviteCoach);
 if (!app.includes("$('inviteSetupForm').addEventListener('submit', setInvitePassword);")) {
   app = replaceRequired(app, inviteListener, inviteListener + "\n$('inviteSetupForm').addEventListener('submit', setInvitePassword);", 'listener del formulario de invitación');
 }
-const mobileCopyListeners = [
-  "document.getElementById('copyAndroidSupabaseUrl')?.addEventListener('click', () => copyCoachConfigValue('androidSupabaseUrl', 'androidSupabaseUrlStatus'));",
-  "document.getElementById('copyAndroidSupabaseKey')?.addEventListener('click', () => copyCoachConfigValue('androidSupabaseKey', 'androidSupabaseKeyStatus'));"
-].join("\n");
-if (!app.includes('copyAndroidSupabaseUrl')) {
-  app = replaceRequired(app, "$('loginBtn').addEventListener('click', signIn);", mobileCopyListeners + "\n$('loginBtn').addEventListener('click', signIn);", 'copiado de configuración Android');
-}
 if (!app.includes('handleInviteLanding();')) {
   app = replaceRequired(app, 'setConfigInputs();', 'setConfigInputs();\nhandleInviteLanding();', 'inicio del flujo de activación');
 }
