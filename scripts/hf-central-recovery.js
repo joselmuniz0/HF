@@ -26,7 +26,6 @@
   }
 
   async function getRecoveryClient() {
-    if (window.HF_SUPABASE_CLIENT) return window.HF_SUPABASE_CLIENT;
     if (recoveryClientPromise) return recoveryClientPromise;
 
     recoveryClientPromise = (async function () {
@@ -47,11 +46,12 @@
           persistSession: true,
           autoRefreshToken: true,
           detectSessionInUrl: false,
-          flowType: "pkce"
+          flowType: "implicit",
+          storageKey: "hf-coach-central-password-recovery"
         }
       });
 
-      window.HF_SUPABASE_CLIENT = client;
+      window.HF_RECOVERY_CLIENT = client;
       return client;
     })();
 
@@ -110,10 +110,14 @@
     const tokenHash = params.get("token_hash");
     const tokenType = params.get("type");
     const code = params.get("code");
+    const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const accessToken = fragment.get("access_token");
+    const refreshToken = fragment.get("refresh_token");
+    const fragmentType = fragment.get("type");
 
-    // Prefer the token-hash path: it can be verified on the device that opens
-    // the email, without requiring the PKCE verifier stored on the requesting device.
-    if (!tokenHash && !code) return;
+    // New recovery requests use implicit flow: the reset link carries a one-time
+    // session in the URL fragment, allowing the recipient device to establish it.
+    if (!tokenHash && !code && !(accessToken && refreshToken)) return;
 
     const loginPanel = byId("loginPanel");
     const inviteSetupPanel = byId("inviteSetupPanel");
@@ -133,7 +137,15 @@
       const client = await getRecoveryClient();
       let result;
 
-      if (tokenHash) {
+      if (accessToken && refreshToken) {
+        if (fragmentType !== "recovery") {
+          throw new Error("El enlace no corresponde a una recuperación de contraseña.");
+        }
+        result = await client.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken
+        });
+      } else if (tokenHash) {
         if (tokenType !== "recovery") {
           throw new Error("El enlace no corresponde a una recuperación de contraseña.");
         }
@@ -142,8 +154,7 @@
           type: "recovery"
         });
       } else {
-        // Backward compatibility for existing PKCE links. These must be opened
-        // in the same browser and device that requested the reset.
+        // Legacy PKCE links work only on the browser/device that requested them.
         result = await client.auth.exchangeCodeForSession(code);
       }
 
@@ -158,12 +169,14 @@
 
       if (resetForm) resetForm.hidden = false;
       showResetStatus("Enlace validado. Definí una contraseña nueva de al menos 10 caracteres.", "success");
+      // Remove one-time codes/tokens from the address bar immediately after the session is established.
       window.history.replaceState({}, document.title, window.location.pathname);
     } catch (error) {
       console.error("HF Coach recovery callback failed:", error);
       if (resetForm) resetForm.hidden = true;
       showResetStatus(
-        "No se pudo validar el enlace: " + (error && error.message ? error.message : String(error)),
+        "No se pudo validar el enlace: " + (error && error.message ? error.message : String(error)) +
+          (code && !accessToken && !tokenHash ? " Este enlace anterior pertenece al flujo PKCE: pedí uno nuevo desde la versión actual de HF Central." : ""),
         "error"
       );
     }
