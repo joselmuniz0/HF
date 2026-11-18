@@ -40,7 +40,7 @@ const manualInviteHandler = [
   '    }',
   "    $('inviteLink').value = actionLink;",
   "    $('inviteResultEmail').textContent = 'Invitación para ' + displayName + ' · ' + email;",
-  "    const shareText = 'Hola ' + displayName + ', te comparto tu invitación individual para activar tu cuenta en HF Coach.\\n\\nAbrí este enlace, verificá tu invitación y definí una contraseña personal de al menos 10 caracteres:\\n' + actionLink + '\\n\\nEste enlace es personal y de un solo uso. No lo reenvíes.';",
+  "    const shareText = 'Hola ' + displayName + ', te comparto tu invitación individual para activar tu cuenta en HF Coach.\\n\\nAbrí este enlace, verificá tu invitación y definí una contraseña personal de al menos 10 caracteres:\\n' + actionLink + '\\n\\nAl finalizar, en esa misma pantalla vas a encontrar la descarga de HF Coach para Android y la configuración para conectar tu cuenta.\\n\\nEste enlace es personal y de un solo uso. No lo reenvíes.';",
   "    $('shareInviteWhatsApp').href = 'https://wa.me/?text=' + encodeURIComponent(shareText);",
   "    $('inviteResultPanel').hidden = false;",
   "    $('inviteForm').reset();",
