@@ -10,6 +10,8 @@ on:
       - 'scripts/extract-central-overlay.sh'
       - 'scripts/patch-central-stage2.mjs'
       - 'scripts/patch-central-stage3.mjs'
+      - 'scripts/patch-central-stage4.mjs'
+      - 'scripts/patch-android-stage4.mjs'
       - 'scripts/build-central-config.mjs'
       - 'supabase/functions/**'
       - 'supabase/migrations/**'
@@ -123,6 +125,8 @@ jobs:
           fs.writeFileSync(htmlPath, html);
           console.log('Android video source now uses app-private storage and a same-origin Capacitor URL; MediaPipe CPU delegate selected.');
           NODE
+      - name: Add shared HF Central access inside Android app
+        run: node scripts/patch-android-stage4.mjs
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
