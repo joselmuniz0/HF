@@ -25,6 +25,10 @@ mkdir -p .hf-central/supabase/functions/request-athlete-access .hf-central/supab
 cp supabase/functions/request-athlete-access/index.ts .hf-central/supabase/functions/request-athlete-access/index.ts
 cp supabase/functions/approve-athlete-access/index.ts .hf-central/supabase/functions/approve-athlete-access/index.ts
 
+# Publicar en el paquete de configuración la migración que usa el alta compartida.
+mkdir -p .hf-central/supabase/migrations
+cp supabase/migrations/20261118_shared_athlete_creation.sql .hf-central/supabase/migrations/20261118_shared_athlete_creation.sql
+
 # El ZIP original ya cumplió su función. Se elimina para que los artefactos contengan solo el contenido extraído y actualizado.
 rm -f .hf-central/HF-Central-Overlay.zip
 
@@ -36,10 +40,12 @@ test -f .hf-central/platform/app-overlay/reports.js
 test -f .hf-central/supabase/functions/invite-coach/index.ts
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts
 test -f .hf-central/supabase/functions/approve-athlete-access/index.ts
+test -f .hf-central/supabase/migrations/20261118_shared_athlete_creation.sql
 grep -q 'function loadAthletePortal' .hf-central/admin/app.js
 grep -q 'function downloadOperationalCsv' .hf-central/admin/app.js
 grep -q 'athleteRegistrationForm' .hf-central/admin/index.html
 grep -q 'recovery.js' .hf-central/admin/index.html
 grep -q 'passwordRecoveryRequestBtn' .hf-central/admin/recovery.js
+grep -q 'save_athlete_bundle' .hf-central/admin/app.js
 
 echo "HF Central overlay extracted, Stage 2 activation patch applied, and updated setup files generated."
