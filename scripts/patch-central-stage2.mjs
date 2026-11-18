@@ -260,16 +260,16 @@ if (!html.includes('id="passwordResetPanel"')) {
   html = replaceRequired(html, '  <main class="shell">\n', '  <main class="shell">\n' + passwordResetPanel, 'pantalla de restablecimiento');
 }
 
+if (!html.includes('<script src="./config.js"></script>')) {
+  html = replaceRequired(html, '  <script type="module" src="./app.js"></script>', '  <script src="./config.js"></script>\n  <script type="module" src="./app.js"></script>', 'configuración runtime del panel');
+}
 if (!html.includes('<script src="./recovery.js"></script>')) {
   html = replaceRequired(
     html,
-    '<script src="./config.js"></script>',
-    '<script src="./config.js"></script>\n  <script src="./recovery.js"></script>',
+    '<script type="module" src="./app.js"></script>',
+    '<script src="./recovery.js"></script>\n  <script type="module" src="./app.js"></script>',
     'controlador independiente de recuperación'
   );
-}
-if (!html.includes('<script src="./config.js"></script>')) {
-  html = replaceRequired(html, '  <script type="module" src="./app.js"></script>', '  <script src="./config.js"></script>\n  <script type="module" src="./app.js"></script>', 'configuración runtime del panel');
 }
 fs.writeFileSync(htmlPath, html, 'utf8');
 
