@@ -13,6 +13,8 @@ node scripts/patch-central-stage3.mjs
 node scripts/patch-central-stage4.mjs
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
+node --check .hf-central/admin/recovery.js
+echo "HF Central recovery.js syntax check passed."
 
 # Mantener la Edge Function desplegable en Supabase y dentro del paquete de configuración.
 mkdir -p .hf-central/supabase/functions/invite-coach
@@ -37,5 +39,7 @@ test -f .hf-central/supabase/functions/approve-athlete-access/index.ts
 grep -q 'function loadAthletePortal' .hf-central/admin/app.js
 grep -q 'function downloadOperationalCsv' .hf-central/admin/app.js
 grep -q 'athleteRegistrationForm' .hf-central/admin/index.html
+grep -q 'recovery.js' .hf-central/admin/index.html
+grep -q 'passwordRecoveryRequestBtn' .hf-central/admin/recovery.js
 
 echo "HF Central overlay extracted, Stage 2 activation patch applied, and updated setup files generated."
