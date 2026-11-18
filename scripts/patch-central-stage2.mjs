@@ -257,6 +257,28 @@ if (!html.includes('id="inviteSetupPanel"')) {
   ].join('\n');
   html = replaceRequired(html, '  <main class="shell">\n', '  <main class="shell">\n' + invitePanels, 'paneles de activación');
 }
+const inviteDoneStart = html.indexOf('<section id="inviteDonePanel"');
+if (inviteDoneStart >= 0 && !html.slice(inviteDoneStart, html.indexOf('</section>', inviteDoneStart)).includes('coachAndroidInstall')) {
+  const inviteDoneEnd = html.indexOf('</section>', inviteDoneStart);
+  if (inviteDoneEnd < 0) throw new Error('No se pudo localizar el cierre del panel de activación.');
+  const installMarkup = [
+    '      <div id="coachAndroidInstall" class="coach-install">',
+    '        <h3>1. Descargar HF Coach para Android</h3>',
+    '        <p>Versión de prueba para el piloto · compilación del 18/11/2026 · 4,3 MB.</p>',
+    '        <a class="button-link coach-download" href="https://ntui7yxdugxgtgoa.public.blob.vercel-storage.com/releases/HF-Coach.apk?download=1" target="_blank" rel="noopener noreferrer">Descargar HF Coach Android</a>',
+    '        <h3>2. Instalar la aplicación</h3>',
+    '        <ol><li>Cuando termine la descarga, abrí el archivo HF-Coach.apk.</li><li>Si Android lo solicita, autorizá la instalación desde el navegador o administrador de archivos que utilizaste.</li><li>Confirmá la instalación y abrí HF Coach.</li></ol>',
+    '        <h3>3. Conectar tu cuenta</h3>',
+    '        <p>En HF Coach abrí <strong>Intercambio</strong>. Ingresá los siguientes datos y luego iniciá sesión con el mismo correo y contraseña de esta activación.</p>',
+    '        <div class="coach-config-row"><div><b>Cuenta</b><code id="coachAccountLabel">—</code></div></div>',
+    '        <div class="coach-config-row"><div><b>URL de Supabase</b><code id="androidSupabaseUrl">—</code><small id="androidSupabaseUrlStatus" class="copy-status" aria-live="polite"></small></div><button id="copyAndroidSupabaseUrl" type="button" class="quiet">Copiar URL</button></div>',
+    '        <div class="coach-config-row"><div><b>Clave pública de Supabase</b><code id="androidSupabaseKey">—</code><small id="androidSupabaseKeyStatus" class="copy-status" aria-live="polite"></small></div><button id="copyAndroidSupabaseKey" type="button" class="quiet">Copiar clave</button></div>',
+    '        <p class="notice">La clave indicada es pública y sirve para conectar la aplicación. Nunca ingreses una clave service_role. La sincronización requiere conexión a Internet.</p>',
+    '      </div>'
+  ].join('\\n');
+  html = html.slice(0, inviteDoneEnd) + installMarkup + '\\n' + html.slice(inviteDoneEnd);
+}
+
 if (!html.includes('id="passwordRecoveryPanel"')) {
   const passwordRecoveryMarkup = [
     '      <details id="passwordRecoveryPanel" class="registration-box">',
