@@ -83,6 +83,18 @@ if (!app.includes("$('copyInviteLink').addEventListener('click', copyInviteLink)
     'botón para copiar el enlace de invitación'
   );
 }
+if (!app.includes('copyAndroidSupabaseUrl')) {
+  const mobileCopyListeners = [
+    "document.getElementById('copyAndroidSupabaseUrl')?.addEventListener('click', () => copyCoachConfigValue('androidSupabaseUrl', 'androidSupabaseUrlStatus'));",
+    "document.getElementById('copyAndroidSupabaseKey')?.addEventListener('click', () => copyCoachConfigValue('androidSupabaseKey', 'androidSupabaseKeyStatus'));"
+  ].join('\\n');
+  app = replaceRequired(
+    app,
+    "$('loginBtn').addEventListener('click', signIn);",
+    mobileCopyListeners + "\\n$('loginBtn').addEventListener('click', signIn);",
+    'copiado de configuración Android'
+  );
+}
 fs.writeFileSync(appPath, app, 'utf8');
 
 let html = fs.readFileSync(htmlPath, 'utf8');
