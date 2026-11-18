@@ -91,12 +91,25 @@ if (!app.includes('async function handleInviteLanding()')) {
     "    $('inviteSetupPanel').hidden = true;",
     "    $('inviteDonePanel').hidden = false;",
     "    $('sessionLabel').textContent = 'Cuenta activada';",
+    "    const mobileConfig = window.HF_CENTRAL_CONFIG || {};",
+    "    $('coachAccountLabel').textContent = sessionData.session.user.email || '';",
+    "    $('androidSupabaseUrl').textContent = mobileConfig.supabaseUrl || '';",
+    "    $('androidSupabaseKey').textContent = mobileConfig.supabasePublishableKey || '';",
+
     '    history.replaceState({}, document.title, window.location.pathname);',
     '  } catch (error) {',
     "    showInviteStatus(error.message || String(error), 'error');",
     '  }',
     '}',
     ''
+
+    'async function copyCoachConfigValue(elementId, statusId) {',
+    '  const value = document.getElementById(elementId)?.textContent?.trim() || "";',
+    '  const status = document.getElementById(statusId);',
+    '  if (!value) { if (status) status.textContent = "Configuración no disponible."; return; }',
+    '  try { await navigator.clipboard.writeText(value); if (status) status.textContent = "Copiado."; }',
+    '  catch (_) { if (status) status.textContent = "No se pudo copiar. Mantené presionado el valor para seleccionarlo."; }',
+    '}',
   ].join('\n');
   app = app.slice(0, start) + activationCode + app.slice(end);
 }
@@ -104,6 +117,13 @@ if (!app.includes('async function handleInviteLanding()')) {
 const inviteListener = "$('inviteForm').addEventListener('submit', inviteCoach);";
 if (!app.includes("$('inviteSetupForm').addEventListener('submit', setInvitePassword);")) {
   app = replaceRequired(app, inviteListener, inviteListener + "\n$('inviteSetupForm').addEventListener('submit', setInvitePassword);", 'listener del formulario de invitación');
+}
+const mobileCopyListeners = [
+  "document.getElementById('copyAndroidSupabaseUrl')?.addEventListener('click', () => copyCoachConfigValue('androidSupabaseUrl', 'androidSupabaseUrlStatus'));",
+  "document.getElementById('copyAndroidSupabaseKey')?.addEventListener('click', () => copyCoachConfigValue('androidSupabaseKey', 'androidSupabaseKeyStatus'));"
+].join("\n");
+if (!app.includes('copyAndroidSupabaseUrl')) {
+  app = replaceRequired(app, "$('loginBtn').addEventListener('click', signIn);", mobileCopyListeners + "\n$('loginBtn').addEventListener('click', signIn);", 'copiado de configuración Android');
 }
 if (!app.includes('handleInviteLanding();')) {
   app = replaceRequired(app, 'setConfigInputs();', 'setConfigInputs();\nhandleInviteLanding();', 'inicio del flujo de activación');
@@ -225,7 +245,20 @@ if (!html.includes('id="inviteSetupPanel"')) {
     '    <section id="inviteDonePanel" class="panel login-panel" hidden>',
     '      <h2>Cuenta activada</h2>',
     '      <p>La contraseña quedó configurada correctamente.</p>',
-    '      <p>Ya podés cerrar esta página e ingresar a HF Coach desde la aplicación Android con tu correo y contraseña.</p>',
+    '      <p>Ya podés instalar HF Coach Android desde esta misma pantalla e ingresar con el correo y la contraseña que acabás de crear.</p>',
+    '      <div id="coachAndroidInstall" class="coach-install">',
+    '        <h3>1. Descargar HF Coach para Android</h3>',
+    '        <p>Versión de prueba para el piloto · compilación del 18/11/2026 · 4,3 MB.</p>',
+    '        <a class="button-link coach-download" href="https://ntui7yxdugxgtgoa.public.blob.vercel-storage.com/releases/HF-Coach.apk?download=1" target="_blank" rel="noopener noreferrer">Descargar HF Coach Android</a>',
+    '        <h3>2. Instalar la aplicación</h3>',
+    '        <ol><li>Cuando termine la descarga, abrí el archivo HF-Coach.apk.</li><li>Si Android lo solicita, autorizá la instalación desde el navegador o administrador de archivos que utilizaste.</li><li>Confirmá la instalación y abrí HF Coach.</li></ol>',
+    '        <h3>3. Conectar tu cuenta</h3>',
+    '        <p>En HF Coach abrí <strong>Intercambio</strong>. Ingresá los siguientes datos y luego iniciá sesión con el mismo correo y contraseña de esta activación.</p>',
+    '        <div class="coach-config-row"><div><b>Cuenta</b><code id="coachAccountLabel">—</code></div></div>',
+    '        <div class="coach-config-row"><div><b>URL de Supabase</b><code id="androidSupabaseUrl">—</code><small id="androidSupabaseUrlStatus" class="copy-status" aria-live="polite"></small></div><button id="copyAndroidSupabaseUrl" type="button" class="quiet">Copiar URL</button></div>',
+    '        <div class="coach-config-row"><div><b>Clave pública de Supabase</b><code id="androidSupabaseKey">—</code><small id="androidSupabaseKeyStatus" class="copy-status" aria-live="polite"></small></div><button id="copyAndroidSupabaseKey" type="button" class="quiet">Copiar clave</button></div>',
+    '        <p class="notice">La clave indicada es pública y sirve para conectar la aplicación. Nunca ingreses una clave service_role. La sincronización requiere conexión a Internet.</p>',
+    '      </div>',
     '    </section>',
     ''
   ].join('\n');
@@ -278,6 +311,9 @@ fs.writeFileSync(htmlPath, html, 'utf8');
 let css = fs.readFileSync(cssPath, 'utf8');
 if (!css.includes('#inviteSetupForm')) {
   css += '\n#inviteSetupForm label{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:600;margin:14px 0}#inviteSetupForm button{width:100%}#inviteSetupStatus:empty{display:none}#inviteSetupPanel .notice{margin-top:18px}\n';
+}
+if (!css.includes('.coach-install{')) {
+  css += '\n.coach-install{margin-top:18px;padding:18px;border:1px solid #dce0df;border-radius:10px;background:#f8f9f8}.coach-install h3{margin:16px 0 7px;font-size:15px}.coach-install h3:first-child{margin-top:0}.coach-install ol{padding-left:22px;line-height:1.6;color:#4f5c63;font-size:13px}.coach-download{display:flex;width:100%;margin:12px 0 18px;min-height:48px}.coach-config-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #e3e7e5}.coach-config-row>div{min-width:0;flex:1}.coach-config-row code{display:block;overflow-wrap:anywhere;user-select:all;padding:7px;background:#eef1f0;border-radius:6px;margin-top:6px;font-size:11px}.coach-config-row button{white-space:nowrap}.copy-status{display:block;color:#28633a;font-size:11px;min-height:14px;margin-top:3px}@media(max-width:600px){.coach-config-row{align-items:stretch;flex-direction:column}.coach-config-row button{width:100%}}\n';
 }
 fs.writeFileSync(cssPath, css, 'utf8');
 console.log('HF Central Stage 2: flujo de activación de coaches aplicado.');
