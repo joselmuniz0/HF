@@ -37,9 +37,12 @@ if (!app.includes('async function handleInviteLanding()')) {
     "  const key = ($('supabaseKey')?.value || runtime.supabasePublishableKey || '').trim();",
     "  if (!url.startsWith('https://') || !key) throw new Error('El panel no tiene configurada la URL y la clave pública de Supabase.');",
     '  localStorage.setItem(STORAGE_KEY, JSON.stringify({ url, key }));',
+    '  if (!supabase && window.HF_SUPABASE_CLIENT) supabase = window.HF_SUPABASE_CLIENT;',
     '  if (!supabase) {',
     "    const isInviteCallback = new URLSearchParams(window.location.search).get('flow') === 'invite';",
-    "    supabase = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: isInviteCallback ? 'implicit' : 'pkce' } });",
+    "    const isRecoveryCallback = new URLSearchParams(window.location.search).has('code');",
+    "    supabase = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: !isRecoveryCallback, flowType: isInviteCallback ? 'implicit' : 'pkce' } });",
+    '    window.HF_SUPABASE_CLIENT = supabase;',
     '  }',
     '  return supabase;',
     '}',
@@ -101,8 +104,9 @@ if (!app.includes("$('inviteSetupForm').addEventListener('submit', setInvitePass
   app = replaceRequired(app, inviteListener, inviteListener + "\n$('inviteSetupForm').addEventListener('submit', setInvitePassword);", 'listener del formulario de invitación');
 }
 if (!app.includes('handleInviteLanding();')) {
-  app = replaceRequired(app, 'setConfigInputs();', 'setConfigInputs();\nhandleInviteLanding();\nhandlePasswordRecoveryLanding();', 'inicio de los flujos de autenticación');
+  app = replaceRequired(app, 'setConfigInputs();', 'setConfigInputs();\nhandleInviteLanding();', 'inicio del flujo de activación');
 }
+app = app.replace(/^\s*handlePasswordRecoveryLanding\(\);\s*$/m, '');
 
 const passwordRecoveryCode = [
   "async function requestPasswordRecovery(triggerButton) {",
@@ -195,7 +199,7 @@ if (!app.includes('async function requestPasswordRecovery()')) {
 app = replaceRequired(
   app,
   "$('loginBtn').addEventListener('click', signIn);",
-  "document.addEventListener('click', function(event) { const target = event.target instanceof Element ? event.target.closest('#passwordRecoveryRequestBtn') : null; if (!target) return; event.preventDefault(); event.stopPropagation(); requestPasswordRecovery(target); }, true);\n$('passwordResetSaveBtn').addEventListener('click', completePasswordRecovery);\n$('passwordResetBackBtn').addEventListener('click', returnToPasswordLogin);\n$('loginBtn').addEventListener('click', signIn);",
+  "$('loginBtn').addEventListener('click', signIn);",
   'eventos de recuperación de contraseña'
 );
 fs.writeFileSync(appPath, app, 'utf8');
@@ -256,6 +260,14 @@ if (!html.includes('id="passwordResetPanel"')) {
   html = replaceRequired(html, '  <main class="shell">\n', '  <main class="shell">\n' + passwordResetPanel, 'pantalla de restablecimiento');
 }
 
+if (!html.includes('<script src="./recovery.js"></script>')) {
+  html = replaceRequired(
+    html,
+    '<script src="./config.js"></script>',
+    '<script src="./config.js"></script>\n  <script src="./recovery.js"></script>',
+    'controlador independiente de recuperación'
+  );
+}
 if (!html.includes('<script src="./config.js"></script>')) {
   html = replaceRequired(html, '  <script type="module" src="./app.js"></script>', '  <script src="./config.js"></script>\n  <script type="module" src="./app.js"></script>', 'configuración runtime del panel');
 }
