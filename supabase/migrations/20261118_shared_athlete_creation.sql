@@ -69,6 +69,34 @@ begin
       using errcode = '22023';
   end if;
 
+  if nullif(p_athlete->>'age', '') is not null
+     and (p_athlete->>'age')::integer not between 8 and 100 then
+    raise exception 'La edad debe estar entre 8 y 100 años.'
+      using errcode = '22023';
+  end if;
+
+  if nullif(p_athlete->>'body_weight_kg', '') is not null
+     and ((p_athlete->>'body_weight_kg')::numeric < 1 or (p_athlete->>'body_weight_kg')::numeric > 300) then
+    raise exception 'El peso corporal debe estar entre 1 y 300 kg.'
+      using errcode = '22023';
+  end if;
+
+  if nullif(p_measurements->'height'->>'metric_value', '') is not null then
+    null;
+  end if;
+
+  if nullif(p_athlete->>'snatch_kg', '') is not null
+     and ((p_athlete->>'snatch_kg')::numeric < 0 or (p_athlete->>'snatch_kg')::numeric > 500) then
+    raise exception 'El arranque RM debe estar entre 0 y 500 kg.'
+      using errcode = '22023';
+  end if;
+
+  if nullif(p_athlete->>'clean_jerk_kg', '') is not null
+     and ((p_athlete->>'clean_jerk_kg')::numeric < 0 or (p_athlete->>'clean_jerk_kg')::numeric > 500) then
+    raise exception 'El envión RM debe estar entre 0 y 500 kg.'
+      using errcode = '22023';
+  end if;
+
   v_athlete_id := coalesce(
     nullif(p_athlete->>'id', '')::uuid,
     gen_random_uuid()
