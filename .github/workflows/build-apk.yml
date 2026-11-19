@@ -171,48 +171,45 @@ jobs:
 
           gradle = Path("app-source/android/app/build.gradle")
           source = gradle.read_text()
-          if "signingConfigs.pilotDebug" not in source:
-              android = re.search(r"(?m)^(\\s*)android\\s*\\{", source)
-              if not android:
-                  raise SystemExit("No se encontró el bloque android en app/build.gradle")
-              child = android.group(1) + "    "
-              signing = (
-                  child + "signingConfigs {\\n" +
-                  child + "    pilotDebug {\\n" +
-                  child + '        storeFile file(System.getenv("HOME") + "/.android/debug.keystore")\\n' +
-                  child + '        storePassword "android"\\n' +
-                  child + '        keyAlias "androiddebugkey"\\n' +
-                  child + '        keyPassword "android"\\n' +
-                  child + "    }\\n" +
-                  child + "}\\n"
-              )
-              source = source[:android.end()] + "\\n" + signing + source[android.end():]
+          android = re.search(r'(?m)^(\s*)android\s*\{', source)
+          if not android:
+              raise SystemExit("No se encontró el bloque android en app/build.gradle")
+          indent = android.group(1) + "    "
 
-          build_types = re.search(r"(?m)^(\\s*)buildTypes\\s*\\{", source)
+          if "signingConfigs.pilotDebug" not in source:
+              signing = """
+          signingConfigs {
+              pilotDebug {
+                  storeFile file(System.getenv("HOME") + "/.android/debug.keystore")
+                  storePassword "android"
+                  keyAlias "androiddebugkey"
+                  keyPassword "android"
+              }
+          }
+          """
+              signing = "\n".join(indent + line if line else "" for line in signing.strip("\n").split("\n")) + "\n"
+              source = source[:android.end()] + "\n" + signing + source[android.end():]
+
+          build_types = re.search(r'(?m)^(\s*)buildTypes\s*\{', source)
           if not build_types:
               raise SystemExit("No se encontró buildTypes en app/build.gradle")
           inner = build_types.group(1) + "    "
-          block_end = source.find("\\n" + build_types.group(1) + "}", build_types.end())
-          if block_end < 0:
-              raise SystemExit("No se pudo cerrar el bloque buildTypes")
-          block = source[build_types.end():block_end]
-          debug = re.search(r"(?m)^\\s*debug\\s*\\{", block)
+          tail = source[build_types.end():]
+          close = re.search(r'(?m)^' + re.escape(build_types.group(1)) + r'\}', tail)
+          if not close:
+              raise SystemExit("No se pudo delimitar buildTypes")
+          block = tail[:close.start()]
+          debug = re.search(r'(?m)^\s*debug\s*\{', block)
           if debug:
-              debug_open = build_types.end() + debug.end()
+              debug_indent = re.match(r'\s*', debug.group(0)).group(0) + "    "
               if "signingConfig signingConfigs.pilotDebug" not in block[debug.start():]:
-                  source = source[:debug_open] + "\\n" + inner + '    signingConfig signingConfigs.pilotDebug' + source[debug_open:]
+                  at = build_types.end() + debug.end()
+                  source = source[:at] + "\n" + debug_indent + "signingConfig signingConfigs.pilotDebug" + source[at:]
           else:
-              release = re.search(r"(?m)^\\s*release\\s*\\{", block)
-              insertion = (
-                  "\\n" + inner + "debug {\\n" +
-                  inner + "    signingConfig signingConfigs.pilotDebug\\n" +
-                  inner + "}\\n"
-              )
-              if release:
-                  at = build_types.end() + release.start()
-                  source = source[:at] + insertion + source[at:]
-              else:
-                  source = source[:build_types.end()] + insertion + source[build_types.end():]
+              release = re.search(r'(?m)^\s*release\s*\{', block)
+              debug_block = "\n" + inner + "debug {\n" + inner + "    signingConfig signingConfigs.pilotDebug\n" + inner + "}\n"
+              at = build_types.end() + (release.start() if release else 0)
+              source = source[:at] + debug_block + source[at:]
 
           gradle.write_text(source)
           print("Gradle debug build explicitly uses the HF Coach pilot keystore.")
