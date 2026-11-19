@@ -48,6 +48,7 @@ if(!app.includes("async function runCoachVideoAnalysis(event)")) {
     "$('coachVideoExisting').addEventListener('change', function(){ if ($('coachVideoExisting').value) $('coachVideoFile').value = ''; });\n"+
     "$('evaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-evaluation-video]'); if (button) showEvaluationVideo(button); });\n"+
     "$('athleteEvaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-athlete-evaluation-video]'); if (button) showEvaluationVideo(button); });","eventos de videoanálisis");
+  fs.writeFileSync(appPath,app,"utf8");
 }
 let html=fs.readFileSync(htmlPath,"utf8");
 if(!html.includes('id="coachVideoAnalysisDetails"')) {
