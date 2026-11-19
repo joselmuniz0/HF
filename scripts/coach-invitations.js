@@ -126,6 +126,13 @@
       token: token
     });
     if (!preview.valid) throw new Error("La invitación no está disponible.");
+    // The main dashboard may finish its own session bootstrap after this script starts.
+    setVisible("loginPanel", false);
+    setVisible("dashboard", false);
+    setVisible("inviteSetupPanel", false);
+    setVisible("inviteDonePanel", false);
+    setVisible("passwordResetPanel", false);
+    setVisible("coachInviteLanding", true);
     byId("coachInviteGreeting").textContent = "Hola " + preview.display_name + ".";
     byId("coachInviteEmail").textContent = preview.email;
     byId("coachInviteOrganization").textContent = preview.organization_name || "HF Coach";
