@@ -49,6 +49,10 @@ Las funciones tienen `verify_jwt=false` para permitir la vista previa pública d
 - `scripts/patch-central-coach-invitations.mjs` integra la pantalla y sustituye el controlador anterior de invitaciones durante el build.
 - `scripts/extract-central-overlay.sh` ejecuta el parche y copia las funciones y la migración al paquete de configuración.
 
+## Compatibilidad con el flujo anterior
+
+Los endpoints heredados `invite-coach` e `invitacion-coach` fueron desactivados y responden HTTP 410. Ya no pueden crear membresías directamente. Las invitaciones nuevas deben salir exclusivamente de `create-coach-invitation`; las cuentas y perfiles existentes no se eliminan ni se modifican al desactivar esos endpoints.
+
 ## Supuesto de seguridad del alta nueva
 
 En una invitación nueva, la posesión del enlace personal de 256 bits es la prueba de autorización para crear la cuenta a nombre del correo invitado; por eso el alta confirma el correo en Supabase sin enviar un segundo correo. Compartir el enlace equivale a entregar esa autorización. Debe enviarse únicamente al destinatario por un canal privado. El sistema limita el riesgo con token aleatorio, hash persistido, vencimiento de 72 horas, revocación y aceptación de un solo uso.
