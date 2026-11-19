@@ -50,7 +50,20 @@ Funciones desplegadas:
 
 Detalle funcional, seguridad y pruebas: [docs/coach-invitations.md](coach-invitations.md).
 
-## 3. Publicar el panel web
+## 3. Autorización RBAC
+
+La autorización de HF Coach se valida en Supabase, no en el navegador. Administrador y coach son roles de organización; el atleta se identifica mediante una vinculación activa en `athlete_accounts`.
+
+- El administrador administra coaches, invitaciones, membresías, asignaciones y calendario organizacional.
+- El coach trabaja con atletas propios o asignados; no administra coaches, membresías ni asignaciones de otros entrenadores.
+- El atleta accede únicamente a su ficha vinculada y puede enviar registros personales pendientes de validación.
+- Las políticas RLS verifican atleta y organización conjuntamente. Los archivos privados validan ambas carpetas del path.
+- Las funciones auxiliares de autorización residen en el esquema `private`, no expuesto por la Data API.
+
+Migración consolidada: `supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql`.
+Detalle de roles, políticas y pruebas: [docs/coach-rbac.md](coach-rbac.md).
+
+## 4. Publicar el panel web
 
 1. Crear un proyecto en Vercel y conectar el repositorio privado `joselmuniz0/HF`.
 2. Mantener el directorio raíz del proyecto en la raíz del repositorio.
@@ -59,7 +72,7 @@ Detalle funcional, seguridad y pruebas: [docs/coach-invitations.md](coach-invita
 
 La web estática puede tener URL pública; los datos no. Todas las consultas pasan por Supabase Auth y RLS. El código cliente no debe contener la clave `service_role`.
 
-## 4. Preparar Android
+## 5. Preparar Android
 
 La pestaña Informes queda incluida en el siguiente APK. En cada teléfono:
 
@@ -72,7 +85,7 @@ La pestaña Informes queda incluida en el siguiente APK. En cada teléfono:
 
 El administrador puede iniciar sesión tanto en la web como en Android; RLS le permite consultar toda la organización. Un coach sólo ve los atletas propios o asignados y la información existente en el servidor según los permisos/políticas aplicables.
 
-## 5. Prueba piloto requerida
+## 6. Prueba piloto requerida
 
 Antes de cargar datos reales, usar datos ficticios y validar:
 
