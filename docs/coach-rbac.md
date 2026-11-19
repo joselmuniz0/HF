@@ -79,7 +79,7 @@ Pruebas realizadas con sesiones SQL simuladas como `authenticated`, con `auth.ui
 | Coach no accede a una organización distinta | PASS |
 | Coach no inserta medición validada sobre atleta de otro coach | Denegado por RLS |
 | Coach no crea evento del calendario organizacional | Denegado por RLS |
-| Coach no se autoasigna un atleta de otro coach | Denegado por RLS |
+| Coach no se autoasigna un atleta de otro coach | Denegado por RLS |\n| Coach intenta solicitar acceso de atleta para su propia cuenta | Denegado por RLS |\n| Admin crea un evento del calendario organizacional | PASS, con ROLLBACK |
 | Coach no lee el perfil de otro coach | 0 filas |
 | Coach no cambia membresías | 0 filas afectadas |
 | Coach actualiza medición de su atleta | PASS |\n| Admin asigna una ficha a otro coach: el coach asignado puede gestionarla y un coach no asignado no la ve | PASS, con ROLLBACK |
