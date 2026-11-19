@@ -72,7 +72,7 @@ if (!app.includes('athleteCreateForm') || !app.includes('newAthleteBirth') || !a
   throw new Error('El formulario central no contiene los campos canónicos de alta.');
 }
 
-app = app.replace(/crypto\\.randomUUID\\(\\)/g, 'window.HFUuid()');
+app = app.replace(/crypto\.randomUUID\(\)/g, 'window.HFUuid()');
 if (!html.includes('id="hfUuidCompatibility"')) {
   const helper = [
     '<script id="hfUuidCompatibility">',
