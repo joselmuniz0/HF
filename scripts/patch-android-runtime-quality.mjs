@@ -26,6 +26,46 @@ if (!html.includes('id="refreshCloudAthletes"')) {
   html = html.replace(oldButton, newButton);
 }
 
+const syncStartMarker = 'async function syncNow() {';
+const syncStart = cloud.indexOf(syncStartMarker);
+const athleteSyncStart = syncStart >= 0 ? cloud.indexOf('  if (consent.profiles) {', syncStart) : -1;
+const athleteSyncEnd = athleteSyncStart >= 0 ? cloud.indexOf('\\n  if (consent.coachNotes && consent.profiles)', athleteSyncStart) : -1;
+if (athleteSyncStart < 0 || athleteSyncEnd < 0) throw new Error('Android: no se encontró el bloque de sincronización de atletas.');
+const atomicLegacySync = [
+  '  if (consent.profiles) {',
+  "    const levelMap = {initial:'initial',intermediate:'intermediate',advanced:'advanced',inicial:'initial',intermedio:'intermediate',avanzado:'advanced'};",
+  "    const sexMap = {female:'female',male:'male',other:'other',femenino:'female',masculino:'male','otro / no informa':'other'};",
+  '    for (const a of athletes) {',
+  "      const {error} = await client.rpc('create_athlete_atomic', {",
+  '        p_organization_id: orgId,',
+  '        p_athlete_id: a.id,',
+  "        p_full_name: String(a.name || '').trim(),",
+  '        p_age: a.age ? Number(a.age) : null,',
+  "        p_level: levelMap[String(a.level || 'initial').toLowerCase()] || 'initial',",
+  "        p_sex: sexMap[String(a.sex || '').toLowerCase()] || null,",
+  '        p_date_of_birth: a.dateOfBirth || null,',
+  '        p_sporting_start_date: a.sportingStartDate || null,',
+  '        p_height_cm: a.height ? Number(a.height) : null,',
+  '        p_body_weight_kg: a.weight ? Number(a.weight) : null,',
+  '        p_snatch_kg: a.snatch ? Number(a.snatch) : null,',
+  '        p_clean_jerk_kg: a.cj ? Number(a.cj) : null,',
+  '        p_notes: consent.coachNotes ? (a.notes || null) : null,',
+  '        p_assigned_coach_id: null',
+  '      });',
+  '      if (error) throw error;',
+  '      sent++;',
+  '    }',
+  '  }'
+].join('\\n');
+if (!cloud.includes("client.rpc('create_athlete_atomic'")) {
+  cloud = cloud.slice(0, athleteSyncStart) + atomicLegacySync + cloud.slice(athleteSyncEnd);
+}
+const oldSyncComplete = '  status(' + String.fromCharCode(96) + 'Sincronización completada. Registros y archivos enviados: ' + String.fromCharCode(36) + '{sent}.' + String.fromCharCode(96) + ');';
+if (!cloud.includes('if (consent.profiles) await refreshCloudAthletes();')) {
+  if (!cloud.includes(oldSyncComplete)) throw new Error('Android: no se encontró el cierre de la sincronización local.');
+  cloud = cloud.replace(oldSyncComplete, '  if (consent.profiles) await refreshCloudAthletes();\\n' + oldSyncComplete);
+}
+
 const createMarker = 'async function createAthleteDirect(payload) {';
 const coachLoader = [
   'async function loadCloudCoachChoices() {',
