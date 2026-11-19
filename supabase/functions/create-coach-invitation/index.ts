@@ -86,8 +86,12 @@ Deno.serve(async (req) => {
       }
     }
 
+    const ttlHours = Number(Deno.env.get("HF_COACH_INVITATION_TTL_HOURS") || "72");
+    if (!Number.isInteger(ttlHours) || ttlHours < 1 || ttlHours > 168) {
+      throw new Error("HF_COACH_INVITATION_TTL_HOURS debe ser un entero entre 1 y 168.");
+    }
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 72 * 60 * 60 * 1000).toISOString();
+    const expiresAt = new Date(now.getTime() + ttlHours * 60 * 60 * 1000).toISOString();
     const { error: revokeError } = await adminClient.from("coach_invitations")
       .update({ revoked_at: now.toISOString() })
       .eq("organization_id", organizationId).eq("email", email)
@@ -121,6 +125,7 @@ Deno.serve(async (req) => {
       invite_url: inviteUrl.toString(),
       action_link: inviteUrl.toString(),
       expires_at: invitation.expires_at,
+      expires_in_hours: ttlHours,
       account_exists: Boolean(existingUser),
       link_type: "hf_coach_invitation",
       message: "Invitación HF Coach creada. Los permisos se asignan únicamente después de la aceptación explícita.",
