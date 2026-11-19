@@ -110,6 +110,7 @@
   }
 
   async function showInvitation(token) {
+    document.body.classList.add("hf-coach-invite-active");
     setVisible("loginPanel", false);
     setVisible("dashboard", false);
     setVisible("inviteSetupPanel", false);
