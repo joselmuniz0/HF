@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -59,6 +59,15 @@ Deno.serve(async (req) => {
       return json({ error: "Solo el coach indicado en la solicitud puede aprobarla." }, 403);
     }
 
+    const { data: targetCoachMembership, error: targetCoachError } = await adminClient
+      .from("organization_memberships").select("role")
+      .eq("organization_id", requestRow.organization_id)
+      .eq("user_id", requestRow.requested_coach_id).maybeSingle();
+    if (targetCoachError) throw targetCoachError;
+    if (targetCoachMembership?.role !== "coach") {
+      return json({ error: "El coach destinatario ya no tiene un rol activo de coach." }, 403);
+    }
+
     const { data: athlete, error: athleteError } = await adminClient
       .from("athletes").select("id, organization_id, full_name, owner_coach_id")
       .eq("id", athleteId).eq("organization_id", requestRow.organization_id).maybeSingle();
@@ -68,6 +77,7 @@ Deno.serve(async (req) => {
     if (!isAdmin && athlete.owner_coach_id !== authData.user.id) {
       const { data: assignment, error: assignmentError } = await adminClient
         .from("coach_athletes").select("athlete_id")
+        .eq("organization_id", requestRow.organization_id)
         .eq("athlete_id", athleteId).eq("coach_id", authData.user.id).maybeSingle();
       if (assignmentError) throw assignmentError;
       if (!assignment) return json({ error: "La ficha seleccionada no pertenece a tu grupo de atletas." }, 403);
@@ -82,44 +92,15 @@ Deno.serve(async (req) => {
       return json({ error: "La cuenta del atleta no tiene el correo verificado o no coincide con la solicitud." }, 403);
     }
 
-    const now = new Date().toISOString();
-    const { error: assignmentError } = await adminClient.from("coach_athletes").upsert({
-      organization_id: requestRow.organization_id,
-      athlete_id: athleteId,
-      coach_id: requestRow.requested_coach_id,
-      assigned_by: authData.user.id,
-    }, { onConflict: "athlete_id,coach_id", ignoreDuplicates: true });
-    if (assignmentError) throw assignmentError;
-
-    const { error: linkError } = await adminClient.from("athlete_accounts").upsert({
-      organization_id: requestRow.organization_id,
-      athlete_id: athleteId,
-      user_id: requestRow.requested_by,
-      email: requestRow.requested_email.toLowerCase(),
-      account_status: "active",
-      linked_by: authData.user.id,
-      linked_at: now,
-      activated_at: now,
-    }, { onConflict: "user_id,athlete_id" });
-    if (linkError) throw linkError;
-
-    const { error: updateError } = await adminClient.from("athlete_access_requests")
-      .update({ status: "approved", reviewed_by: authData.user.id, reviewed_at: now })
-      .eq("id", requestId).eq("status", "pending");
-    if (updateError) {
-      await adminClient.from("athlete_accounts").delete()
-        .eq("user_id", requestRow.requested_by).eq("athlete_id", athleteId);
-      throw updateError;
-    }
-
-    return json({
-      ok: true,
-      athlete_id: athleteId,
-      athlete_name: athlete.full_name,
-      user_email: requestRow.requested_email,
-      coach_id: requestRow.requested_coach_id,
-      message: "Cuenta vinculada. El atleta ya puede ingresar y consultar su historial deportivo.",
+    const { data: approval, error: approvalError } = await adminClient.rpc("approve_athlete_access_request", {
+      p_request_id: requestId,
+      p_athlete_id: athleteId,
+      p_approver_id: authData.user.id,
     });
+    if (approvalError) throw approvalError;
+    if (!approval?.ok) return json({ error: approval?.error || "No se pudo completar la vinculación." }, 409);
+
+    return json(approval);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 400);
   }
