@@ -225,7 +225,7 @@ if (getConfig()) {
 
 if (!cloud.includes('createAthleteDirect')) cloud += cloudCode;
 const loginMarker = 'status(`Sesión iniciada: ${currentUser.email}.`);';
-if (cloud.includes(loginMarker) && !cloud.includes('await refreshCloudAthletes();')) {
+if (cloud.includes(loginMarker) && !cloud.includes(loginMarker + '\n    await refreshCloudAthletes();')) {
   cloud = cloud.replace(loginMarker, loginMarker + '\n    await refreshCloudAthletes();');
 }
 
