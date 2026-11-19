@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const appPath = path.resolve('.hf-central/admin/app.js');
+const htmlPath = path.resolve('.hf-central/admin/index.html');
 let app = fs.readFileSync(appPath, 'utf8');
+let html = fs.readFileSync(htmlPath, 'utf8');
 
 const start = app.indexOf('async function createAthleteProfile(event) {');
 if (start < 0) {
@@ -70,5 +72,24 @@ if (!app.includes('athleteCreateForm') || !app.includes('newAthleteBirth') || !a
   throw new Error('El formulario central no contiene los campos canónicos de alta.');
 }
 
+app = app.replace(/crypto\\.randomUUID\\(\\)/g, 'window.HFUuid()');
+if (!html.includes('id="hfUuidCompatibility"')) {
+  const helper = [
+    '<script id="hfUuidCompatibility">',
+    'window.HFUuid = window.HFUuid || function () {',
+    '  var c = window.crypto;',
+    '  if (c && typeof c["randomUUID"] === "function") return c["randomUUID"]();',
+    '  if (!c || typeof c.getRandomValues !== "function") throw new Error("No hay generador seguro de identificadores en este navegador.");',
+    '  var bytes = new Uint8Array(16); c.getRandomValues(bytes);',
+    '  bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;',
+    '  var h = Array.prototype.map.call(bytes, function (v) { return ("0" + v.toString(16)).slice(-2); }).join("");',
+    '  return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20);',
+    '};',
+    '</script>'
+  ].join('\\n');
+  if (!html.includes('</head>')) throw new Error('HF Central: no se encontró el cierre head para UUID compatibility.');
+  html = html.replace('</head>', helper + '\\n</head>');
+}
+fs.writeFileSync(htmlPath, html, 'utf8');
 fs.writeFileSync(appPath, app, 'utf8');
-console.log('HF Central athlete registration now uses the atomic Supabase RPC.');
+console.log('HF Central athlete registration now uses atomic Supabase RPC and a secure UUID fallback.');
