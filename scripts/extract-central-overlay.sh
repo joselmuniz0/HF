@@ -12,6 +12,7 @@ node scripts/patch-central-stage2.mjs
 node scripts/patch-central-stage3.mjs
 node scripts/patch-central-stage4.mjs
 node scripts/patch-central-athlete-registration.mjs
+node scripts/patch-central-coach-invitations.mjs
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
@@ -21,9 +22,17 @@ echo "HF Central recovery.js syntax check passed."
 mkdir -p .hf-central/supabase/migrations
 cp supabase/migrations/20261118_create_athlete_atomic.sql .hf-central/supabase/migrations/20261118_create_athlete_atomic.sql
 cp supabase/migrations/20261119_harden_athlete_registration_security.sql .hf-central/supabase/migrations/20261119_harden_athlete_registration_security.sql
+cp supabase/migrations/20261119140000_coach_invitations.sql .hf-central/supabase/migrations/20261119140000_coach_invitations.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
+
+mkdir -p .hf-central/supabase/functions/create-coach-invitation
+cp supabase/functions/create-coach-invitation/index.ts .hf-central/supabase/functions/create-coach-invitation/index.ts
+mkdir -p .hf-central/supabase/functions/accept-coach-invitation
+cp supabase/functions/accept-coach-invitation/index.ts .hf-central/supabase/functions/accept-coach-invitation/index.ts
+mkdir -p .hf-central/supabase/functions/manage-coach-invitations
+cp supabase/functions/manage-coach-invitations/index.ts .hf-central/supabase/functions/manage-coach-invitations/index.ts
 
 # Incluir las funciones de vinculación dentro del paquete de instalación del panel.
 mkdir -p .hf-central/supabase/functions/request-athlete-access .hf-central/supabase/functions/approve-athlete-access
@@ -39,6 +48,13 @@ test -f .hf-central/admin/styles.css
 test -f .hf-central/admin/recovery.js
 test -f .hf-central/platform/app-overlay/reports.js
 test -f .hf-central/supabase/functions/invite-coach/index.ts
+test -f .hf-central/supabase/functions/create-coach-invitation/index.ts
+test -f .hf-central/supabase/functions/accept-coach-invitation/index.ts
+test -f .hf-central/supabase/functions/manage-coach-invitations/index.ts
+test -f .hf-central/supabase/migrations/20261119140000_coach_invitations.sql
+test -f .hf-central/admin/coach-invitations.js
+grep -q 'create-coach-invitation' .hf-central/admin/app.js
+grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts
 test -f .hf-central/supabase/functions/approve-athlete-access/index.ts
 grep -q 'function loadAthletePortal' .hf-central/admin/app.js
