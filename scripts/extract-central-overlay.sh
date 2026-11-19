@@ -25,6 +25,7 @@ mkdir -p .hf-central/supabase/migrations
 cp supabase/migrations/20261118_create_athlete_atomic.sql .hf-central/supabase/migrations/20261118_create_athlete_atomic.sql
 cp supabase/migrations/20261119_harden_athlete_registration_security.sql .hf-central/supabase/migrations/20261119_harden_athlete_registration_security.sql
 cp supabase/migrations/20261119140000_coach_invitations.sql .hf-central/supabase/migrations/20261119140000_coach_invitations.sql
+cp supabase/migrations/20261119154000_coach_invitation_role_guard.sql .hf-central/supabase/migrations/20261119154000_coach_invitation_role_guard.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
