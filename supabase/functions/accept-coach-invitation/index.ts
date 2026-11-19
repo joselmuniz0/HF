@@ -128,7 +128,8 @@ Deno.serve(async (req) => {
       }
 
       const { error: passwordError } = await adminClient.auth.admin.updateUserById(existingUser.id, {
-        password
+        password,
+        email_confirm: true
       });
       if (passwordError) throw passwordError;
 
