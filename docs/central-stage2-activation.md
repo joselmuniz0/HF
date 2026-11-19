@@ -1,3 +1,5 @@
+> **Histórico:** este documento describe el mecanismo anterior basado en Magic Links de Supabase. Fue reemplazado por el sistema propio de invitaciones HF Coach. No usar estos pasos para nuevas invitaciones. Consultar [docs/coach-invitations.md](coach-invitations.md).
+
 # HF Coach Central — invitaciones manuales sin SMTP
 
 ## Objetivo
