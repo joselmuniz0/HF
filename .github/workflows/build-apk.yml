@@ -13,6 +13,7 @@ on:
       - 'scripts/patch-central-stage4.mjs'
       - 'scripts/patch-android-stage4.mjs'
       - 'scripts/patch-android-athlete-registration.mjs'
+      - 'scripts/patch-android-runtime-quality.mjs'
       - 'scripts/build-central-config.mjs'
       - 'supabase/functions/**'
       - 'supabase/migrations/**'
@@ -130,6 +131,8 @@ jobs:
         run: node scripts/patch-android-stage4.mjs
       - name: Unify Android athlete registration with HF Central
         run: node scripts/patch-android-athlete-registration.mjs
+      - name: Apply Android runtime compatibility and cross-device refresh
+        run: node scripts/patch-android-runtime-quality.mjs
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
