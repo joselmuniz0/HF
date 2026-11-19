@@ -13,6 +13,10 @@ let app=fs.readFileSync(appPath,"utf8");
 if(!app.includes("async function runCoachVideoAnalysis(event)")) {
   const code=fs.readFileSync(path.resolve("scripts/central-video-analysis-runtime.js"),"utf8");
   app=replaceOnce(app,"journal: [] };","journal: [], mediaAssets: [] };","colección de mediaAssets");
+  app=replaceOnce(app,
+    "sb.from('evaluations').select('id,athlete_id,created_by,lift,created_at,metrics,findings,confidence,frame_count,review_status,coach_feedback,video_name')",
+    "sb.from('evaluations').select('id,athlete_id,created_by,lift,created_at,metrics,findings,confidence,frame_count,review_status,coach_feedback,video_name,media_asset_id')",
+    "identificador del video asociado a la evaluación");
   app=replaceOnce(app,"    data.sessions = sessions.data || [];",
     "    data.sessions = sessions.data || [];\n"+
     "    const mediaAssetsResult = await sb.from('media_assets').select('id,organization_id,athlete_id,uploaded_by,object_path,file_name,mime_type,size_bytes,created_at').eq('organization_id', organizationId).order('created_at', { ascending: false });\n"+
