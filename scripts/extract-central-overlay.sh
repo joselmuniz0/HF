@@ -14,12 +14,15 @@ node scripts/patch-central-stage4.mjs
 node scripts/patch-central-athlete-registration.mjs
 node scripts/patch-central-coach-invitations.mjs
 node scripts/patch-central-role-ui.mjs
+node scripts/patch-central-video-analysis.mjs
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
 echo "HF Central recovery.js syntax check passed."
 node --check .hf-central/admin/coach-invitations.js
 echo "HF Central coach-invitations.js syntax check passed."
+grep -q 'coachVideoAnalysisDetails' .hf-central/admin/index.html
+grep -q 'media_asset_id' .hf-central/admin/app.js
 grep -q 'applyRoleBasedInterface' .hf-central/admin/app.js
 grep -q 'hf-role-hidden' .hf-central/admin/styles.css
 echo "HF Central role-based interface patch applied."
@@ -31,6 +34,7 @@ cp supabase/migrations/20261119_harden_athlete_registration_security.sql .hf-cen
 cp supabase/migrations/20261119140000_coach_invitations.sql .hf-central/supabase/migrations/20261119140000_coach_invitations.sql
 cp supabase/migrations/20261119154000_coach_invitation_role_guard.sql .hf-central/supabase/migrations/20261119154000_coach_invitation_role_guard.sql
 cp supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql .hf-central/supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql
+cp supabase/migrations/20261119225000_hf_video_analysis_media_link.sql .hf-central/supabase/migrations/20261119225000_hf_video_analysis_media_link.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -65,6 +69,7 @@ test -f .hf-central/supabase/functions/manage-coach-invitations/index.ts
 test -f .hf-central/supabase/migrations/20261119140000_coach_invitations.sql
 test -f .hf-central/supabase/migrations/20261119154000_coach_invitation_role_guard.sql
 test -f .hf-central/supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql
+test -f .hf-central/supabase/migrations/20261119225000_hf_video_analysis_media_link.sql
 test -f .hf-central/admin/coach-invitations.js
 grep -q 'create-coach-invitation' .hf-central/admin/app.js
 grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
