@@ -50,6 +50,17 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
+    const { data: requesterMembership, error: requesterMembershipError } = await adminClient
+      .from("organization_memberships")
+      .select("role")
+      .eq("organization_id", organizationId)
+      .eq("user_id", authData.user.id)
+      .maybeSingle();
+    if (requesterMembershipError) throw requesterMembershipError;
+    if (requesterMembership) {
+      return json({ error: "Las cuentas de administrador y coach no pueden solicitar vinculación como atleta." }, 403);
+    }
+
     const { data: existingLink, error: linkError } = await adminClient
       .from("athlete_accounts")
       .select("id, account_status")
