@@ -57,7 +57,8 @@ const atomicLegacySync = [
   '    }',
   '  }'
 ].join('\n');
-if (!cloud.includes("client.rpc('create_athlete_atomic'")) {
+const currentAthleteSyncBlock = cloud.slice(athleteSyncStart, athleteSyncEnd);
+if (!currentAthleteSyncBlock.includes("client.rpc('create_athlete_atomic'")) {
   cloud = cloud.slice(0, athleteSyncStart) + atomicLegacySync + cloud.slice(athleteSyncEnd);
 }
 const oldSyncComplete = '  status(' + String.fromCharCode(96) + 'Sincronización completada. Registros y archivos enviados: ' + String.fromCharCode(36) + '{sent}.' + String.fromCharCode(96) + ');';
