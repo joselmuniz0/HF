@@ -13,7 +13,6 @@ let app=fs.readFileSync(appPath,"utf8");
 if(!app.includes("async function runCoachVideoAnalysis(event)")) {
   const code=fs.readFileSync(path.resolve("scripts/central-video-analysis-runtime.js"),"utf8");
   app=replaceOnce(app,"journal: [] };","journal: [], mediaAssets: [] };","colección de mediaAssets");
-  app=replaceOnce(app,
     "sb.from('evaluations').select('id,athlete_id,created_by,lift,created_at,metrics,findings,confidence,frame_count,review_status,coach_feedback,video_name')",
     "sb.from('evaluations').select('id,athlete_id,created_by,lift,created_at,metrics,findings,confidence,frame_count,review_status,coach_feedback,video_name,media_asset_id')",
     "identificador del video asociado a la evaluación");
@@ -48,6 +47,7 @@ if(!app.includes("async function runCoachVideoAnalysis(event)")) {
   athleteRender = replaceOnce(athleteRender, "</td></tr>`;", "</td><td><button type=\"button\" class=\"quiet\" data-view-athlete-evaluations=\"${esc(a.id)}\">Ver análisis</button></td></tr>`;", "botón de acceso a videoanálisis");
   athleteRender = replaceOnce(athleteRender, "<th>Coach responsable</th><th>Evaluaciones</th></tr></thead>", "<th>Coach responsable</th><th>Evaluaciones</th><th>Acciones</th></tr></thead>", "encabezado de acciones");
   app = app.slice(0, athleteRenderStart) + athleteRender + app.slice(athleteRenderEnd);
+  app=replaceOnce(app,"function renderOperationalModules() {\n  refreshOperationalSelects();",
     "function renderOperationalModules() {\n  refreshOperationalSelects();\n  populateCoachVideoAssetOptions();","actualización del selector de videos");
   app=replaceOnce(app,"$('loginBtn').addEventListener('click', signIn);",code+"\n$('loginBtn').addEventListener('click', signIn);","motor de videoanálisis");
   app=replaceOnce(app,"$('athleteVideoForm').addEventListener('submit', uploadAthleteVideo);",
