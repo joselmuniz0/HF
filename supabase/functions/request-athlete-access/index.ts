@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       .eq("user_id", coach.id)
       .maybeSingle();
     if (membershipError) throw membershipError;
-    if (!membership || !["admin", "coach"].includes(membership.role)) {
+    if (membership?.role !== "coach") {
       return json({ error: "Ese correo no corresponde a un coach habilitado en HF Coach." }, 404);
     }
 
