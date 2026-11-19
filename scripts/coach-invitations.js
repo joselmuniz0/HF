@@ -80,6 +80,27 @@
     if (!accepted.ok) throw new Error("No se pudo confirmar la invitación.");
     completeAcceptance();
   }
+  async function resetExistingPassword(token, email, password, confirmation) {
+    if (password.length < 12 || password.length > 128) {
+      throw new Error("La contraseña debe tener entre 12 y 128 caracteres.");
+    }
+    if (password !== confirmation) throw new Error("Las contraseñas no coinciden.");
+    setStatus("coachInviteResetStatus", "Actualizando la contraseña y confirmando la invitación…", "");
+    var accepted = await invoke("accept-coach-invitation", {
+      action: "set_existing_password",
+      token: token,
+      password: password
+    });
+    if (!accepted.ok || !accepted.password_updated) {
+      throw new Error("No se pudo actualizar la contraseña ni confirmar la invitación.");
+    }
+    var client = await getClient();
+    var current = await client.auth.getSession();
+    if (current.data && current.data.session) await client.auth.signOut();
+    var signed = await client.auth.signInWithPassword({ email: email, password: password });
+    if (signed.error) throw signed.error;
+    completeAcceptance();
+  }
   async function acceptNew(token, email, password, confirmation) {
     if (password.length < 12 || password.length > 128) {
       throw new Error("La contraseña debe tener entre 12 y 128 caracteres.");
@@ -104,6 +125,8 @@
     setStatus("coachInviteGlobalStatus",
       "Invitación confirmada. Tu cuenta ya tiene el rol de coach en HF Coach. Abriendo tu espacio…", "success");
     setVisible("coachInviteExistingForm", false);
+    setVisible("coachInviteExistingLoginForm", false);
+    setVisible("coachInviteResetForm", false);
     setVisible("coachInviteNewForm", false);
     setVisible("coachInviteSignedIn", false);
     window.setTimeout(function () { window.location.replace(window.location.pathname); }, 900);
@@ -119,6 +142,8 @@
     setVisible("coachInviteLanding", true);
     setStatus("coachInviteGlobalStatus", "Comprobando la invitación…", "");
     setVisible("coachInviteExistingForm", false);
+    setVisible("coachInviteExistingLoginForm", false);
+    setVisible("coachInviteResetForm", false);
     setVisible("coachInviteNewForm", false);
     setVisible("coachInviteSignedIn", false);
 
@@ -163,7 +188,7 @@
     if (preview.account_exists) {
       setVisible("coachInviteExistingForm", true);
       setStatus("coachInviteGlobalStatus", "Esta dirección ya tiene una cuenta de HF Coach. Iniciá sesión con ese correo y tu contraseña para aceptar la invitación.", "");
-      byId("coachInviteExistingForm").onsubmit = async function (event) {
+      byId("coachInviteExistingLoginForm").onsubmit = async function (event) {
         event.preventDefault();
         var button = byId("coachInviteExistingSubmit");
         button.disabled = true;
@@ -171,6 +196,26 @@
           await acceptExisting(token, preview.email, byId("coachInviteExistingPassword").value);
         } catch (error) {
           setStatus("coachInviteExistingStatus", error.message || String(error), "error");
+          button.disabled = false;
+        }
+      };
+      byId("coachInviteResetToggle").onclick = function () {
+        setVisible("coachInviteResetForm", true);
+        this.hidden = true;
+      };
+      byId("coachInviteResetForm").onsubmit = async function (event) {
+        event.preventDefault();
+        var button = byId("coachInviteResetSubmit");
+        button.disabled = true;
+        try {
+          await resetExistingPassword(
+            token,
+            preview.email,
+            byId("coachInviteResetPassword").value,
+            byId("coachInviteResetPasswordConfirm").value
+          );
+        } catch (error) {
+          setStatus("coachInviteResetStatus", error.message || String(error), "error");
           button.disabled = false;
         }
       };
