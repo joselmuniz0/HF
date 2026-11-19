@@ -122,7 +122,7 @@ if (!html.includes('id="competitionAdminOnlyNotice"')) {
   if (competitionFormIndex < 0) throw new Error("Role UI: no se encontró el formulario de competencias.");
   const formStart = html.lastIndexOf("<form", competitionFormIndex);
   if (formStart < 0) throw new Error("Role UI: no se encontró el inicio del formulario de competencias.");
-  const notice = '<p id="competitionAdminOnlyNotice" class="hf-role-notice" hidden>El calendario de competencias lo administra la organización. Podés registrar resultados de tus atletas en el formulario de resultados.</p>\\n          ';
+  const notice = '<p id="competitionAdminOnlyNotice" class="hf-role-notice" hidden>El calendario de competencias lo administra la organización. Podés registrar resultados de tus atletas en el formulario de resultados.</p>\n          ';
   html = html.slice(0, formStart) + notice + html.slice(formStart);
 }
 if (!html.includes('id="hfRoleContext"')) {
