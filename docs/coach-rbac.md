@@ -82,7 +82,7 @@ Pruebas realizadas con sesiones SQL simuladas como `authenticated`, con `auth.ui
 | Coach no se autoasigna un atleta de otro coach | Denegado por RLS |
 | Coach no lee el perfil de otro coach | 0 filas |
 | Coach no cambia membresías | 0 filas afectadas |
-| Coach actualiza medición de su atleta | PASS |
+| Coach actualiza medición de su atleta | PASS |\n| Admin asigna una ficha a otro coach: el coach asignado puede gestionarla y un coach no asignado no la ve | PASS, con ROLLBACK |
 | Coach crea ficha propia mediante `create_athlete_atomic` | PASS |
 | Admin crea ficha delegada a un coach vigente | PASS |
 | Atleta ve solo su ficha y puede enviar medición pendiente de validación | PASS |
@@ -90,7 +90,7 @@ Pruebas realizadas con sesiones SQL simuladas como `authenticated`, con `auth.ui
 | Funciones auxiliares fuera de public y sin ejecución anon | PASS |
 | Datos existentes luego de pruebas | 2 atletas, 2 asignaciones, 4 mediciones, 4 marcas |
 
-Las pruebas negativas se observaron como errores RLS 42501 en inserciones, o como cero filas para SELECT/UPDATE filtrados. Las pruebas positivas de escritura finalizaron con ROLLBACK para no dejar registros de prueba.
+Las pruebas negativas se observaron como errores RLS 42501 en inserciones, o como cero filas para SELECT/UPDATE filtrados. Las pruebas positivas de escritura finalizaron con ROLLBACK para no dejar registros de prueba. Se verificó además que el esquema `private` no tiene USAGE para `anon`, y que las funciones auxiliares ya no existen bajo nombres RPC públicos.
 
 ## Pendiente de validación operativa
 
