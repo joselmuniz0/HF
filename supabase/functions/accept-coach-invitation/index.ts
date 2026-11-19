@@ -104,6 +104,44 @@ Deno.serve(async (req) => {
       return json({ ok: true, ...data });
     }
 
+    if (action === "set_existing_password") {
+      if (!invitation || status !== "pending") {
+        return json({ error: "La invitación ya no está disponible.", code: status.toUpperCase() }, 410);
+      }
+      const password = String(body.password || "");
+      if (password.length < 12 || password.length > 128) {
+        return json({ error: "La contraseña debe tener entre 12 y 128 caracteres." }, 400);
+      }
+      const existingUser = await findUserByEmail(adminClient, invitation.email);
+      if (!existingUser) {
+        return json({ error: "No encontramos una cuenta existente para esta invitación. Usá la opción de crear cuenta.", code: "ACCOUNT_NOT_FOUND" }, 404);
+      }
+      const { data: existingMembership, error: membershipError } = await adminClient
+        .from("organization_memberships")
+        .select("role")
+        .eq("organization_id", invitation.organization_id)
+        .eq("user_id", existingUser.id)
+        .maybeSingle();
+      if (membershipError) throw membershipError;
+      if (existingMembership?.role === "admin") {
+        return json({ error: "Una cuenta administradora no puede aceptar una invitación de coach." }, 409);
+      }
+
+      const { error: passwordError } = await adminClient.auth.admin.updateUserById(existingUser.id, {
+        password
+      });
+      if (passwordError) throw passwordError;
+
+      const { data, error } = await adminClient.rpc("accept_coach_invitation", {
+        p_token_hash: tokenHash,
+        p_user_id: existingUser.id,
+        p_email: invitation.email,
+        p_display_name: invitation.display_name,
+      });
+      if (error) throw error;
+      return json({ ok: true, password_updated: true, ...data });
+    }
+
     if (action === "accept_new") {
       if (!invitation || status !== "pending") return json({ error: "La invitación ya no está disponible.", code: status.toUpperCase() }, 410);
       const password = String(body.password || "");
