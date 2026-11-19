@@ -12,6 +12,7 @@ on:
       - 'scripts/patch-central-stage3.mjs'
       - 'scripts/patch-central-stage4.mjs'
       - 'scripts/patch-android-stage4.mjs'
+      - 'scripts/patch-android-athlete-registration.mjs'
       - 'scripts/build-central-config.mjs'
       - 'supabase/functions/**'
       - 'supabase/migrations/**'
@@ -127,6 +128,8 @@ jobs:
           NODE
       - name: Add shared HF Central access inside Android app
         run: node scripts/patch-android-stage4.mjs
+      - name: Unify Android athlete registration with HF Central
+        run: node scripts/patch-android-athlete-registration.mjs
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
