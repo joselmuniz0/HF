@@ -29,7 +29,7 @@ if (!html.includes('id="refreshCloudAthletes"')) {
 const syncStartMarker = 'async function syncNow() {';
 const syncStart = cloud.indexOf(syncStartMarker);
 const athleteSyncStart = syncStart >= 0 ? cloud.indexOf('  if (consent.profiles) {', syncStart) : -1;
-const athleteSyncEnd = athleteSyncStart >= 0 ? cloud.indexOf('\\n  if (consent.coachNotes && consent.profiles)', athleteSyncStart) : -1;
+const athleteSyncEnd = athleteSyncStart >= 0 ? cloud.indexOf('\n  if (consent.coachNotes && consent.profiles)', athleteSyncStart) : -1;
 if (athleteSyncStart < 0 || athleteSyncEnd < 0) throw new Error('Android: no se encontró el bloque de sincronización de atletas.');
 const atomicLegacySync = [
   '  if (consent.profiles) {',
@@ -56,14 +56,14 @@ const atomicLegacySync = [
   '      sent++;',
   '    }',
   '  }'
-].join('\\n');
+].join('\n');
 if (!cloud.includes("client.rpc('create_athlete_atomic'")) {
   cloud = cloud.slice(0, athleteSyncStart) + atomicLegacySync + cloud.slice(athleteSyncEnd);
 }
 const oldSyncComplete = '  status(' + String.fromCharCode(96) + 'Sincronización completada. Registros y archivos enviados: ' + String.fromCharCode(36) + '{sent}.' + String.fromCharCode(96) + ');';
 if (!cloud.includes('if (consent.profiles) await refreshCloudAthletes();')) {
   if (!cloud.includes(oldSyncComplete)) throw new Error('Android: no se encontró el cierre de la sincronización local.');
-  cloud = cloud.replace(oldSyncComplete, '  if (consent.profiles) await refreshCloudAthletes();\\n' + oldSyncComplete);
+  cloud = cloud.replace(oldSyncComplete, '  if (consent.profiles) await refreshCloudAthletes();\n' + oldSyncComplete);
 }
 
 const createMarker = 'async function createAthleteDirect(payload) {';
