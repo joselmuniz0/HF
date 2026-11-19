@@ -13,12 +13,16 @@ node scripts/patch-central-stage3.mjs
 node scripts/patch-central-stage4.mjs
 node scripts/patch-central-athlete-registration.mjs
 node scripts/patch-central-coach-invitations.mjs
+node scripts/patch-central-role-ui.mjs
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
 echo "HF Central recovery.js syntax check passed."
 node --check .hf-central/admin/coach-invitations.js
 echo "HF Central coach-invitations.js syntax check passed."
+grep -q 'applyRoleBasedInterface' .hf-central/admin/app.js
+grep -q 'hf-role-hidden' .hf-central/admin/styles.css
+echo "HF Central role-based interface patch applied."
 
 # Mantener la Edge Function desplegable en Supabase y dentro del paquete de configuración.
 mkdir -p .hf-central/supabase/migrations
