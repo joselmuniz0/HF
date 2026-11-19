@@ -58,6 +58,7 @@ test -f .hf-central/supabase/functions/create-coach-invitation/index.ts
 test -f .hf-central/supabase/functions/accept-coach-invitation/index.ts
 test -f .hf-central/supabase/functions/manage-coach-invitations/index.ts
 test -f .hf-central/supabase/migrations/20261119140000_coach_invitations.sql
+test -f .hf-central/supabase/migrations/20261119154000_coach_invitation_role_guard.sql
 test -f .hf-central/admin/coach-invitations.js
 grep -q 'create-coach-invitation' .hf-central/admin/app.js
 grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
