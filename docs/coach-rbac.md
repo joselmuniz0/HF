@@ -97,3 +97,14 @@ Las pruebas negativas se observaron como errores RLS 42501 en inserciones, o com
 La base de datos y Edge Functions ya fueron probadas con sesiones simuladas. Falta validar desde los tres clientes reales: administrador web, coach web/Android y una cuenta de atleta vinculada. En particular, confirmar que el coach pueda crear/planificar/evaluar sus atletas, que el segundo coach no vea esos datos, y que el atleta pueda consultar y enviar datos pendientes.
 
 El asesor de seguridad de Supabase ya no reporta funciones SECURITY DEFINER expuestas en el esquema público. Permanece un aviso separado: protección contra contraseñas filtradas desactivada en Auth, que debe activarse desde la configuración de Auth.
+
+
+## Videoanálisis de escritorio y ficha deportiva
+
+HF Central incorpora un panel plegable de videoanálisis para el coach. Permite seleccionar un video privado ya recibido o cargar uno desde el equipo, analizar un intento de arranque o cargada con MediaPipe y revisar métricas, hallazgos y fotogramas clave antes de guardar. El flujo admite MP4, MOV y WEBM, con duración máxima de 20 segundos.
+
+Al guardar, el archivo se almacena en el bucket privado `athlete-media` y la evaluación queda pendiente de revisión humana. La tabla `evaluations` incorpora `media_asset_id`; la clave foránea compuesta exige que el archivo y la evaluación correspondan a la misma organización y atleta. Las URLs para reproducir un video se generan bajo demanda y son temporales.
+
+El panel de evaluaciones del coach y el portal del atleta muestran el análisis, la devolución del coach y un control para abrir el video asociado. Para evaluaciones Android anteriores que no contengan `media_asset_id`, la interfaz intenta localizar el archivo por atleta y nombre de video.
+
+La prueba de escritura con sesión simulada confirmó que el coach asignado puede guardar metadatos y evaluación, mientras que otro coach no puede leerlos. La prueba se ejecutó con ROLLBACK. Queda pendiente la validación operativa con un video real, en los clientes web y Android, y con una cuenta de atleta vinculada.
