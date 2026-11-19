@@ -11,12 +11,16 @@ cp scripts/hf-central-recovery.js .hf-central/admin/recovery.js
 node scripts/patch-central-stage2.mjs
 node scripts/patch-central-stage3.mjs
 node scripts/patch-central-stage4.mjs
+node scripts/patch-central-athlete-registration.mjs
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
 echo "HF Central recovery.js syntax check passed."
 
 # Mantener la Edge Function desplegable en Supabase y dentro del paquete de configuración.
+mkdir -p .hf-central/supabase/migrations
+cp supabase/migrations/20261118_create_athlete_atomic.sql .hf-central/supabase/migrations/20261118_create_athlete_atomic.sql
+
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
 
@@ -38,6 +42,8 @@ test -f .hf-central/supabase/functions/request-athlete-access/index.ts
 test -f .hf-central/supabase/functions/approve-athlete-access/index.ts
 grep -q 'function loadAthletePortal' .hf-central/admin/app.js
 grep -q 'function downloadOperationalCsv' .hf-central/admin/app.js
+grep -q 'create_athlete_atomic' .hf-central/admin/app.js
+grep -q 'create_athlete_atomic' .hf-central/supabase/migrations/20261118_create_athlete_atomic.sql
 grep -q 'athleteRegistrationForm' .hf-central/admin/index.html
 grep -q 'recovery.js' .hf-central/admin/index.html
 grep -q 'passwordRecoveryRequestBtn' .hf-central/admin/recovery.js
