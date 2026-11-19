@@ -19,7 +19,7 @@ const newCoachText = [
 if (html.includes(oldCoachText)) html = html.replace(oldCoachText, newCoachText);
 else if (!html.includes('id="athCoachWrap"')) throw new Error('Falta el selector de coach.');
 
-const oldButton = '<button id="cloudSync" class="p" type="button">Sincronizar ahora</button>';
+const oldButton = '<button id="cloudSync" type="button">Sincronizar ahora</button>';
 const newButton = oldButton + '<button id="refreshCloudAthletes" type="button">Actualizar atletas desde Central</button>';
 if (!html.includes('id="refreshCloudAthletes"')) {
   if (!html.includes(oldButton)) throw new Error('No se encontró el botón de sincronización.');
