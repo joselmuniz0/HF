@@ -38,9 +38,9 @@ La aplicación utiliza almacenamiento privado de la app y selectores del sistema
 La nueva capa de HF Central incorpora:
 - Pestaña **Informes** en Android para consultar datos sincronizados y registrar la revisión humana de evaluaciones.
 - Panel web organizacional para que el administrador consulte coaches, atletas, sesiones e informes.
-- Invitación de coaches mediante Supabase Edge Function protegida por rol de administrador.
+- Invitaciones propias de coaches con token aleatorio, hash persistido, vista previa no consumible, aceptación explícita y revocación.
 - Despliegue del panel web con Vercel mediante `vercel.json`.
 
-Guía operativa: [docs/central-platform-github.md](docs/central-platform-github.md).
+Guía operativa: [docs/central-platform-github.md](docs/central-platform-github.md).\n\nFlujo de invitaciones: [docs/coach-invitations.md](docs/coach-invitations.md).
 
 Los archivos de migración, Edge Function y aplicación web se empaquetan en `HF-Central-Overlay.zip`, reconstruido por `scripts/extract-central-overlay.sh`. GitHub Actions publica ese ZIP como artefacto `HF-Central-Setup` junto con cada build Android.

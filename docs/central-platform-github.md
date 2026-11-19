@@ -29,18 +29,26 @@ values ('<ORGANIZATION_UUID>', '<ADMIN_USER_UUID>', 'admin');
 
 No compartir los UUID de cuentas ni contraseñas fuera de los canales administrativos de la organización.
 
-## 2. Habilitar invitación de coaches
+## 2. Invitaciones propias de coaches
 
-El archivo `supabase/functions/invite-coach/index.ts` debe desplegarse como Edge Function. Configurar los secretos en Supabase, nunca en Android, Vercel, GitHub ni JavaScript del navegador:
+El flujo vigente utiliza tokens propios de HF Coach. No utiliza Magic Links de un solo uso de Supabase Auth.
 
-```bash
-supabase login
-supabase link --project-ref <PROJECT_REF>
-supabase secrets set SUPABASE_URL=https://<PROJECT_REF>.supabase.co SUPABASE_ANON_KEY=<PUBLIC_ANON_KEY> SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY>
-supabase functions deploy invite-coach
-```
+1. El administrador ingresa nombre y correo desde **Coaches → Invitar coach**.
+2. HF Coach crea una invitación asociada a la organización y al rol `coach`. El token aleatorio se guarda solamente como hash.
+3. El enlace propio se comparte de forma privada por WhatsApp. El token queda en el fragmento URL, por lo que no se envía en la solicitud HTTP.
+4. La vista previa no consume el token. El coach inicia sesión o crea su cuenta y pulsa confirmar.
+5. Una función del servidor valida la identidad, el correo, la vigencia y el estado de la invitación. Solo entonces asigna el rol `coach` y crea/actualiza el perfil.
 
-El endpoint genera enlaces de invitación sin enviar correos, por lo que no requiere SMTP. El administrador comparte cada enlace individual por WhatsApp u otro canal privado. El endpoint exige sesión válida y rol `admin` en esa organización. Configurar Site URL y Redirect URL de Supabase según `docs/central-stage2-activation.md`.
+Las invitaciones vencen a las 72 horas. El administrador puede consultar su estado y revocar las pendientes desde HF Central. Una nueva invitación al mismo correo y organización revoca la anterior que siga pendiente.
+
+La tabla `public.coach_invitations` tiene RLS activado y no es accesible desde los roles públicos o autenticados. Las Edge Functions usan la clave de servicio solo en servidor y verifican expresamente la sesión y los permisos de administrador. La aceptación se ejecuta de forma atómica y de un solo uso.
+
+Funciones desplegadas:
+- `create-coach-invitation`
+- `accept-coach-invitation`
+- `manage-coach-invitations`
+
+Detalle funcional, seguridad y pruebas: [docs/coach-invitations.md](coach-invitations.md).
 
 ## 3. Publicar el panel web
 
