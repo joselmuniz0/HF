@@ -138,7 +138,7 @@ if (!css.includes("hf-coach-invite-active #coachInviteLanding")) {
     "body.hf-coach-invite-active:before{content:\"\";position:fixed;inset:0;z-index:9998;background:#f3f4f3}",
     "body.hf-coach-invite-active #coachInviteLanding:not([hidden]){position:fixed;inset:16px;z-index:9999;margin:auto;width:calc(100% - 32px);max-width:560px;max-height:calc(100vh - 32px);overflow:auto}",
     ""
-  ].join("\\n");
+  ].join("\n");
 }
 if (!css.includes(".coach-invite-landing{")) {
   css += [
