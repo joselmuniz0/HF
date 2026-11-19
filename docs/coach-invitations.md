@@ -11,9 +11,9 @@ Este flujo reemplaza los enlaces de un solo uso de Supabase Auth para incorporar
 3. Supabase genera 32 bytes aleatorios (256 bits). En la base se almacena solamente el SHA-256 del token, nunca el token original.
 4. HF Central devuelve un enlace propio con el token en el fragmento `#coach_invite=`. El fragmento no se envía al servidor en la solicitud HTTP ni en el encabezado `Referer`.
 5. El administrador lo comparte por WhatsApp. La lectura de la página y la vista previa son de solo lectura: abrir o inspeccionar el enlace no consume la invitación.
-6. Un coach con cuenta existente inicia sesión con su correo y contraseña; el servidor comprueba que el correo de la sesión coincide con el destinatario.
+6. Un coach con cuenta existente inicia sesión con su correo y contraseña; el servidor comprueba que el correo de la sesión coincide con el destinatario. Si la cuenta todavía no tiene contraseña o el coach no puede ingresar, puede elegir explícitamente definir una nueva contraseña usando el enlace personal.
 7. Un coach nuevo define una contraseña de 12 a 128 caracteres. La cuenta se crea en el servidor y la invitación se acepta en la misma operación lógica.
-8. La función SQL consume la invitación una sola vez y crea/actualiza la membresía y el perfil del coach. Si la operación falla, la transacción revierte el consumo.
+8. La función SQL consume la invitación una sola vez y crea/actualiza la membresía y el perfil del coach. Si la operación SQL falla, la transacción revierte el consumo.
 
 ## Vencimiento, revocación y reenvío
 
@@ -57,7 +57,7 @@ Los endpoints heredados `invite-coach` e `invitacion-coach` fueron desactivados 
 
 En una invitación nueva, la posesión del enlace personal de 256 bits es la prueba de autorización para crear la cuenta a nombre del correo invitado; por eso el alta confirma el correo en Supabase sin enviar un segundo correo. Compartir el enlace equivale a entregar esa autorización. Debe enviarse únicamente al destinatario por un canal privado. El sistema limita el riesgo con token aleatorio, hash persistido, vencimiento de 72 horas, revocación y aceptación de un solo uso.
 
-En cuentas existentes no se cambia la contraseña: el coach debe iniciar sesión con su contraseña habitual y el servidor verifica que el correo de la sesión coincida con la invitación.
+En cuentas existentes, la contraseña no se modifica automáticamente. El coach puede iniciar sesión con su contraseña habitual y el servidor verifica que el correo de la sesión coincida con la invitación. Como alternativa explícita, el titular del enlace puede definir una contraseña nueva; el servidor actualiza únicamente la cuenta cuyo correo coincide con la invitación y luego acepta el token. Compartir el enlace permite realizar esta actualización y debe tratarse como una credencial sensible.
 
 ## Pruebas de aceptación
 
