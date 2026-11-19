@@ -41,14 +41,8 @@ if(!app.includes("async function runCoachVideoAnalysis(event)")) {
   app=replaceOnce(app,'      esc(e.coach_feedback || "El coach todavía no publicó una devolución.") + \'</p>\' +\n',
     '      esc(e.coach_feedback || "El coach todavía no publicó una devolución.") + \'</p>\' + videoHtml +\n',"enlace al video dentro del portal");
   app=replaceOnce(app,
-    "    return `<tr><td><b>\\${esc(a.full_name)}</b></td><td>\\${esc(a.level || '—')}</td><td>\\${esc(a.age ?? '—')}</td><td>\\${esc(a.body_weight_kg ?? '—')}</td><td>\\${esc(a.snatch_kg ?? '—')}</td><td>\\${esc(a.clean_jerk_kg ?? '—')}</td><td>\\${esc(owner?.display_name || 'Coach')}</td><td>\\${data.evaluations.filter(e => e.athlete_id === a.id).length}</td></tr>`;",
-    "    return `<tr><td><b>\\${esc(a.full_name)}</b></td><td>\\${esc(a.level || '—')}</td><td>\\${esc(a.age ?? '—')}</td><td>\\${esc(a.body_weight_kg ?? '—')}</td><td>\\${esc(a.snatch_kg ?? '—')}</td><td>\\${esc(a.clean_jerk_kg ?? '—')}</td><td>\\${esc(owner?.display_name || 'Coach')}</td><td>\\${data.evaluations.filter(e => e.athlete_id === a.id).length}</td><td><button type=\"button\" class=\"quiet\" data-view-athlete-evaluations=\"\\${esc(a.id)}\">Ver análisis</button></td></tr>`;",
-    "acceso directo a los análisis desde atletas");
-  app=replaceOnce(app,
-    "<th>Coach responsable</th><th>Evaluaciones</th></tr></thead>",
-    "<th>Coach responsable</th><th>Evaluaciones</th><th>Acciones</th></tr></thead>",
-    "columna de acceso a análisis");
-  app=replaceOnce(app,"function renderOperationalModules() {\n  refreshOperationalSelects();",
+  app=replaceOnce(app,'</td><td>${data.evaluations.filter(e => e.athlete_id === a.id).length}</td></tr>`;','</td><td>${data.evaluations.filter(e => e.athlete_id === a.id).length}</td><td><button type="button" class="quiet" data-view-athlete-evaluations="${esc(a.id)}">Ver análisis</button></td></tr>`;',"acceso directo a los análisis desde atletas");
+  app=replaceOnce(app,"<th>Coach responsable</th><th>Evaluaciones</th></tr></thead>","<th>Coach responsable</th><th>Evaluaciones</th><th>Acciones</th></tr></thead>","columna de acceso a análisis");
     "function renderOperationalModules() {\n  refreshOperationalSelects();\n  populateCoachVideoAssetOptions();","actualización del selector de videos");
   app=replaceOnce(app,"$('loginBtn').addEventListener('click', signIn);",code+"\n$('loginBtn').addEventListener('click', signIn);","motor de videoanálisis");
   app=replaceOnce(app,"$('athleteVideoForm').addEventListener('submit', uploadAthleteVideo);",
@@ -59,7 +53,7 @@ if(!app.includes("async function runCoachVideoAnalysis(event)")) {
     "$('coachVideoFile').addEventListener('change', function(){ if ($('coachVideoFile').files.length) $('coachVideoExisting').value = ''; });\n"+
     "$('coachVideoExisting').addEventListener('change', function(){ if ($('coachVideoExisting').value) $('coachVideoFile').value = ''; });\n"+
     "$('evaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-evaluation-video]'); if (button) showEvaluationVideo(button); });\n"+
-    "$('athleteEvaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-athlete-evaluation-video]'); if (button) showEvaluationVideo(button); });\\n"+
+    "$('athleteEvaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-athlete-evaluation-video]'); if (button) showEvaluationVideo(button); });\n"+
     "$('athletes').addEventListener('click', function(event){ const button = event.target.closest('[data-view-athlete-evaluations]'); if (!button) return; $('athleteFilter').value = button.dataset.viewAthleteEvaluations; renderEvaluations(); $('evaluations').scrollIntoView({behavior:'smooth',block:'start'}); });","eventos de videoanálisis");
   fs.writeFileSync(appPath,app,"utf8");
 }
