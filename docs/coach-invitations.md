@@ -17,7 +17,7 @@ Este flujo reemplaza los enlaces de un solo uso de Supabase Auth para incorporar
 
 ## Vencimiento, revocación y reenvío
 
-- Cada invitación vence a las 72 horas.
+- Cada invitación vence por defecto a las 72 horas. El valor se puede configurar con el secreto de Edge Functions `HF_COACH_INVITATION_TTL_HOURS`, aceptando enteros entre 1 y 168 horas. Si no se define, se usan 72 horas.
 - Crear otra invitación para el mismo correo y organización revoca cualquier invitación anterior que siga pendiente.
 - Desde **Invitaciones de coaches** el administrador puede consultar estados y revocar enlaces pendientes.
 - Los estados son pendiente, aceptada, revocada o vencida.
