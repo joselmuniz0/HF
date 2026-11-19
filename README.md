@@ -36,6 +36,7 @@ La aplicación utiliza almacenamiento privado de la app y selectores del sistema
 ## HF Central — informes Android y panel web
 
 La nueva capa de HF Central incorpora:
+- Panel plegable de videoanálisis en escritorio, con MediaPipe, carga de videos privados, revisión humana y acceso al análisis desde las fichas del coach y del atleta.
 - Pestaña **Informes** en Android para consultar datos sincronizados y registrar la revisión humana de evaluaciones.
 - Panel web organizacional para que el administrador consulte coaches, atletas, sesiones e informes.
 - Invitaciones propias de coaches con token aleatorio, hash persistido, vista previa no consumible, aceptación explícita y revocación.
