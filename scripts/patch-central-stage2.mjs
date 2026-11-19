@@ -42,7 +42,7 @@ if (!app.includes('async function handleInviteLanding()')) {
     "    const searchParams = new URLSearchParams(window.location.search);",
     "    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));",
     "    const callbackType = hashParams.get('type') || searchParams.get('type') || '';",
-    "    const isCodeCallback = searchParams.has('code');",
+    "    const isCodeCallback = searchParams.has('code') || hashParams.has('code');",
     "    supabase = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: isCodeCallback ? 'pkce' : 'implicit' } });",
     '    window.HF_SUPABASE_CLIENT = supabase;',
     '  }',
