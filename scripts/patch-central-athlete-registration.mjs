@@ -86,9 +86,9 @@ if (!html.includes('id="hfUuidCompatibility"')) {
     '  return h.slice(0,8)+"-"+h.slice(8,12)+"-"+h.slice(12,16)+"-"+h.slice(16,20)+"-"+h.slice(20);',
     '};',
     '</script>'
-  ].join('\\n');
+  ].join('\n');
   if (!html.includes('</head>')) throw new Error('HF Central: no se encontró el cierre head para UUID compatibility.');
-  html = html.replace('</head>', helper + '\\n</head>');
+  html = html.replace('</head>', helper + '\n</head>');
 }
 fs.writeFileSync(htmlPath, html, 'utf8');
 fs.writeFileSync(appPath, app, 'utf8');
