@@ -13,6 +13,10 @@ let app=fs.readFileSync(appPath,"utf8");
 if(!app.includes("async function runCoachVideoAnalysis(event)")) {
   const code=fs.readFileSync(path.resolve("scripts/central-video-analysis-runtime.js"),"utf8");
   app=replaceOnce(app,"journal: [] };","journal: [], mediaAssets: [] };","colección de mediaAssets");
+  app=replaceOnce(app,
+    "sb.from('evaluations').select('id,athlete_id,created_by,lift,created_at,metrics,findings,confidence,frame_count,review_status,coach_feedback,video_name')",
+    "sb.from('evaluations').select('id,athlete_id,created_by,lift,created_at,metrics,findings,confidence,frame_count,review_status,coach_feedback,video_name,media_asset_id')",
+    "identificador del video asociado a la evaluación");
     "sb.from('evaluations').select('id,athlete_id,created_by,lift,created_at,metrics,findings,confidence,frame_count,review_status,coach_feedback,video_name')",
     "sb.from('evaluations').select('id,athlete_id,created_by,lift,created_at,metrics,findings,confidence,frame_count,review_status,coach_feedback,video_name,media_asset_id')",
     "identificador del video asociado a la evaluación");
@@ -39,7 +43,6 @@ if(!app.includes("async function runCoachVideoAnalysis(event)")) {
     "    const videoHtml = mediaAsset ? '<button type=\"button\" class=\"quiet\" data-open-athlete-evaluation-video=\"' + esc(e.id) + '\" data-media-asset=\"' + esc(mediaAsset.id) + '\">Ver video del análisis</button><div class=\"hf-video-preview\" data-video-preview hidden></div>' : '';","video visible en portal de atleta");
   app=replaceOnce(app,'      esc(e.coach_feedback || "El coach todavía no publicó una devolución.") + \'</p>\' +\n',
     '      esc(e.coach_feedback || "El coach todavía no publicó una devolución.") + \'</p>\' + videoHtml +\n',"enlace al video dentro del portal");
-  app=replaceOnce(app,
   const athleteRenderStart = app.indexOf("function renderAthletes()");
   const athleteRenderEnd = app.indexOf("function renderEvaluations()", athleteRenderStart);
   if (athleteRenderStart < 0 || athleteRenderEnd < 0) throw new Error("No se encontró renderAthletes");
