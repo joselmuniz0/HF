@@ -61,6 +61,14 @@ const roleFunction = [
 "    setRoleBlockVisibility(roleContext, true);",
 "  }",
 "",
+"  // The organization competition calendar is administered centrally. Coaches can record results only.",
+"  const competitionForm = document.getElementById('competitionForm');",
+"  if (competitionForm) {",
+"    setRoleBlockVisibility(competitionForm, isAdmin);",
+"    const competitionNotice = document.getElementById('competitionAdminOnlyNotice');",
+"    if (competitionNotice) setRoleBlockVisibility(competitionNotice, !isAdmin);",
+"  }",
+"",
 "  // The coach can register and manage their own athletes; coach assignment stays locked to self.",
 "  const coachSelector = document.getElementById('newAthleteCoach');",
 "  if (coachSelector) {",
@@ -101,12 +109,22 @@ if (!css.includes(".hf-role-hidden{")) {
     "",
     ".hf-role-hidden{display:none!important}",
     "#hfRoleContext{margin:8px 0 14px;padding:10px 14px;border-left:3px solid #b8c8c0;background:#eef4f0;color:#40584a;border-radius:4px;font-size:13px}",
+    ".hf-role-notice{grid-column:1/-1;padding:10px 12px;background:#f4f5f5;border-radius:6px;color:#58635e;font-size:13px}",
     ""
   ].join("\n");
 }
 fs.writeFileSync(cssPath, css, "utf8");
 
 let html = fs.readFileSync(path.join(adminDir, "index.html"), "utf8");
+if (!html.includes('id="competitionAdminOnlyNotice"')) {
+  const competitionFormMarker = 'id="competitionForm"';
+  const competitionFormIndex = html.indexOf(competitionFormMarker);
+  if (competitionFormIndex < 0) throw new Error("Role UI: no se encontró el formulario de competencias.");
+  const formStart = html.lastIndexOf("<form", competitionFormIndex);
+  if (formStart < 0) throw new Error("Role UI: no se encontró el inicio del formulario de competencias.");
+  const notice = '<p id="competitionAdminOnlyNotice" class="hf-role-notice" hidden>El calendario de competencias lo administra la organización. Podés registrar resultados de tus atletas en el formulario de resultados.</p>\\n          ';
+  html = html.slice(0, formStart) + notice + html.slice(formStart);
+}
 if (!html.includes('id="hfRoleContext"')) {
   const heading = '<h2>Vista de organización</h2>';
   if (html.includes(heading)) {
