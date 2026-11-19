@@ -187,7 +187,10 @@
 
     if (preview.account_exists) {
       setVisible("coachInviteExistingForm", true);
-      setStatus("coachInviteGlobalStatus", "Esta dirección ya tiene una cuenta de HF Coach. Iniciá sesión con ese correo y tu contraseña para aceptar la invitación.", "");
+      setVisible("coachInviteExistingLoginForm", true);
+      setVisible("coachInviteResetForm", false);
+      byId("coachInviteResetToggle").hidden = false;
+      setStatus("coachInviteGlobalStatus", "Esta dirección ya tiene una cuenta de HF Coach. Podés ingresar con tu contraseña actual o definir una nueva usando esta invitación.", "");
       byId("coachInviteExistingLoginForm").onsubmit = async function (event) {
         event.preventDefault();
         var button = byId("coachInviteExistingSubmit");
