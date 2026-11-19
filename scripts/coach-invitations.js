@@ -31,7 +31,7 @@
       if (!config.supabaseUrl || !config.supabasePublishableKey) {
         throw new Error("HF Central no tiene configurada la conexión con Supabase.");
       }
-      var module = await import("https://esm.sh/@supabase/supabase-js@2");
+      var module = await import("https://esm.sh/@supabase/supabase-js@2.119.2");
       var client = module.createClient(config.supabaseUrl, config.supabasePublishableKey, {
         auth: {
           persistSession: true,
