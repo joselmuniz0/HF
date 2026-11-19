@@ -55,7 +55,12 @@ const replacement = `async function createAthleteProfile(event) {
   }
 }`;
 
-app = app.slice(0, start) + replacement + app.slice(end);
+const replacementWithBinding = replacement + `
+document.getElementById("athleteCreateForm")?.addEventListener("input", () => {
+  window.HFPendingAthleteCreateId = null;
+});
+`;
+app = app.slice(0, start) + replacementWithBinding + app.slice(end);
 
 // Reuse the same request identifier after an uncertain network result so a retry cannot create duplicates.
 if (!app.includes('HFPendingAthleteCreateId')) {
