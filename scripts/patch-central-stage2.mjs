@@ -42,7 +42,7 @@ if (!app.includes('async function handleInviteLanding()')) {
     "    const searchParams = new URLSearchParams(window.location.search);",
     "    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));",
     "    const callbackType = hashParams.get('type') || searchParams.get('type') || '';",
-    "    const isInviteCallback = searchParams.get('flow') === 'invite' || ['invite', 'magiclink'].includes(callbackType);
+    "    const isInviteCallback = searchParams.get('flow') === 'invite' || ['invite', 'magiclink'].includes(callbackType);",
     "    const isRecoveryCallback = searchParams.has('code') || searchParams.has('token_hash') || hashParams.get('type') === 'recovery';",
     "    supabase = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: !isRecoveryCallback, flowType: isInviteCallback ? 'implicit' : 'pkce' } });",
     '    window.HF_SUPABASE_CLIENT = supabase;',
@@ -59,7 +59,7 @@ if (!app.includes('async function handleInviteLanding()')) {
     '  const params = new URLSearchParams(window.location.search);',
     "  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));",
     "  const callbackType = hashParams.get('type') || params.get('type') || '';",
-    "  if (params.get('flow') !== 'invite' && !['invite', 'magiclink'].includes(callbackType)) return;
+    "  if (params.get('flow') !== 'invite' && !['invite', 'magiclink'].includes(callbackType)) return;",
     "  $('loginPanel').hidden = true;",
     "  $('dashboard').hidden = true;",
     "  $('inviteSetupPanel').hidden = false;",
