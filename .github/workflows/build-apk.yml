@@ -163,9 +163,74 @@ jobs:
           base64 --decode android/signing/debug.keystore.b64 > "$HOME/.android/debug.keystore"
           chmod 600 "$HOME/.android/debug.keystore"
           keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
+      - name: Configure explicit pilot debug signing
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          gradle = Path("app-source/android/app/build.gradle")
+          source = gradle.read_text()
+          if "signingConfigs.pilotDebug" not in source:
+              android = re.search(r"(?m)^(\\s*)android\\s*\\{", source)
+              if not android:
+                  raise SystemExit("No se encontró el bloque android en app/build.gradle")
+              child = android.group(1) + "    "
+              signing = (
+                  child + "signingConfigs {\\n" +
+                  child + "    pilotDebug {\\n" +
+                  child + '        storeFile file(System.getenv("HOME") + "/.android/debug.keystore")\\n' +
+                  child + '        storePassword "android"\\n' +
+                  child + '        keyAlias "androiddebugkey"\\n' +
+                  child + '        keyPassword "android"\\n' +
+                  child + "    }\\n" +
+                  child + "}\\n"
+              )
+              source = source[:android.end()] + "\\n" + signing + source[android.end():]
+
+          build_types = re.search(r"(?m)^(\\s*)buildTypes\\s*\\{", source)
+          if not build_types:
+              raise SystemExit("No se encontró buildTypes en app/build.gradle")
+          inner = build_types.group(1) + "    "
+          block_end = source.find("\\n" + build_types.group(1) + "}", build_types.end())
+          if block_end < 0:
+              raise SystemExit("No se pudo cerrar el bloque buildTypes")
+          block = source[build_types.end():block_end]
+          debug = re.search(r"(?m)^\\s*debug\\s*\\{", block)
+          if debug:
+              debug_open = build_types.end() + debug.end()
+              if "signingConfig signingConfigs.pilotDebug" not in block[debug.start():]:
+                  source = source[:debug_open] + "\\n" + inner + '    signingConfig signingConfigs.pilotDebug' + source[debug_open:]
+          else:
+              release = re.search(r"(?m)^\\s*release\\s*\\{", block)
+              insertion = (
+                  "\\n" + inner + "debug {\\n" +
+                  inner + "    signingConfig signingConfigs.pilotDebug\\n" +
+                  inner + "}\\n"
+              )
+              if release:
+                  at = build_types.end() + release.start()
+                  source = source[:at] + insertion + source[at:]
+              else:
+                  source = source[:build_types.end()] + insertion + source[build_types.end():]
+
+          gradle.write_text(source)
+          print("Gradle debug build explicitly uses the HF Coach pilot keystore.")
+          PY
       - name: Build debug APK
         working-directory: app-source/android
         run: ./gradlew --no-daemon assembleDebug
+      - name: Verify stable pilot APK signature
+        working-directory: app-source/android
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          CERT="$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print $2; exit}' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          EXPECTED="dfc7a28540222fa9b953608717653afbaf540a4a2c9648d4aa0141a6b07a85b7"
+          echo "APK certificate SHA-256: $CERT"
+          test "$CERT" = "$EXPECTED" || { echo "APK no está firmado con la clave estable del piloto."; exit 1; }
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
