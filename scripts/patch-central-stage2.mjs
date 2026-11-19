@@ -42,7 +42,6 @@ if (!app.includes('async function handleInviteLanding()')) {
     "    const searchParams = new URLSearchParams(window.location.search);",
     "    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));",
     "    const callbackType = hashParams.get('type') || searchParams.get('type') || '';",
-    "    const isInviteCallback = searchParams.get('flow') === 'invite' || ['invite', 'magiclink'].includes(callbackType);",
     "    const isCodeCallback = searchParams.has('code');",
     "    const isInviteCallback = searchParams.get('flow') === 'invite' || searchParams.has('token_hash') || hashParams.has('access_token') || ['invite', 'magiclink'].includes(callbackType);",
     "    supabase = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, flowType: isCodeCallback ? 'pkce' : 'implicit' } });",
