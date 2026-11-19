@@ -28,6 +28,8 @@ cp supabase/migrations/20261119140000_coach_invitations.sql .hf-central/supabase
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
+mkdir -p .hf-central/supabase/functions/invitacion-coach
+cp supabase/functions/invitacion-coach/index.ts .hf-central/supabase/functions/invitacion-coach/index.ts
 
 mkdir -p .hf-central/supabase/functions/create-coach-invitation
 cp supabase/functions/create-coach-invitation/index.ts .hf-central/supabase/functions/create-coach-invitation/index.ts
@@ -50,6 +52,7 @@ test -f .hf-central/admin/styles.css
 test -f .hf-central/admin/recovery.js
 test -f .hf-central/platform/app-overlay/reports.js
 test -f .hf-central/supabase/functions/invite-coach/index.ts
+test -f .hf-central/supabase/functions/invitacion-coach/index.ts
 test -f .hf-central/supabase/functions/create-coach-invitation/index.ts
 test -f .hf-central/supabase/functions/accept-coach-invitation/index.ts
 test -f .hf-central/supabase/functions/manage-coach-invitations/index.ts
