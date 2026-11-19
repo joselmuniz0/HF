@@ -25,7 +25,7 @@ El alta queda asociada a la organización y al rol `coach`. La función también
 5. En la misma pantalla aparece el botón **Descargar HF Coach Android**, los pasos de instalación y los datos públicos para configurar Intercambio.
 6. El coach instala el APK, abre **Intercambio**, copia la URL y la clave pública de Supabase que aparecen en esa pantalla e inicia sesión con el mismo correo y contraseña.
 
-El enlace de invitación es de un solo uso. Su vencimiento depende de la configuración de validez de enlaces de Supabase Auth. Si ya se utilizó o venció, el administrador debe generar otra invitación.
+Los enlaces de invitación y de acceso son de un solo uso. Su vencimiento depende de la configuración de validez de enlaces de Supabase Auth. Si el correo ya existe, no se intenta crear una segunda cuenta: se emite un enlace de acceso para esa cuenta. Si ya se utilizó o venció, el administrador debe generar otra invitación.
 
 ## Descarga Android para coaches
 
