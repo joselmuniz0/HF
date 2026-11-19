@@ -59,7 +59,7 @@ Deno.serve(async (req) => {
     if (!centralSiteUrl.startsWith("https://")) {
       throw new Error("HF_CENTRAL_SITE_URL debe ser una URL HTTPS válida.");
     }
-    const inviteRedirectTo = \`\${centralSiteUrl}/?flow=invite\`;
+    const inviteRedirectTo = centralSiteUrl + "/?flow=invite";
 
     const adminClient = createClient(url, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
