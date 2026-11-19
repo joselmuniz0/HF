@@ -17,6 +17,8 @@ node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
 echo "HF Central recovery.js syntax check passed."
+node --check .hf-central/admin/coach-invitations.js
+echo "HF Central coach-invitations.js syntax check passed."
 
 # Mantener la Edge Function desplegable en Supabase y dentro del paquete de configuración.
 mkdir -p .hf-central/supabase/migrations
