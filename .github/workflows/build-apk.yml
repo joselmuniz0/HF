@@ -221,13 +221,10 @@ jobs:
         working-directory: app-source/android
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
-          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          test -n "$APKSIGNER"
-          CERT="$("$APKSIGNER" verify --print-certs "$APK" | awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print $2; exit}' | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          CERT="$(keytool -printcert -jarfile "$APK" | awk -F': ' '/SHA256:/ {gsub(/:/, "", $2); print tolower($2); exit}')"
           EXPECTED="dfc7a28540222fa9b953608717653afbaf540a4a2c9648d4aa0141a6b07a85b7"
           echo "APK certificate SHA-256: $CERT"
           test "$CERT" = "$EXPECTED" || { echo "APK no está firmado con la clave estable del piloto."; exit 1; }
-
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
