@@ -109,10 +109,17 @@ if (!cloud.includes('async function loadCloudCoachChoices()')) {
   cloud = cloud.replace(createMarker, coachLoader + createMarker);
 }
 
-cloud = cloud.replace(
+const directCreateStart = cloud.indexOf(createMarker);
+if (directCreateStart < 0) throw new Error('Android: no se encontró el alta directa para asignar coach.');
+const directCreateSource = cloud.slice(directCreateStart);
+if (!directCreateSource.includes('p_assigned_coach_id: null') && !directCreateSource.includes('p_assigned_coach_id: membership.role')) {
+  throw new Error('Android: no se encontró el argumento de asignación del alta directa.');
+}
+const directCreateUpdated = directCreateSource.replace(
   'p_assigned_coach_id: null',
   "p_assigned_coach_id: membership.role === 'admin' ? (payload.assignedCoachId || null) : null"
 );
+cloud = cloud.slice(0, directCreateStart) + directCreateUpdated;
 
 const loginExact = 'status(' + String.fromCharCode(96) + 'Sesión iniciada: ' + String.fromCharCode(36) + '{currentUser.email}.' + String.fromCharCode(96) + ');';
 if (cloud.includes(loginExact) && !cloud.includes('await loadCloudCoachChoices();')) {
