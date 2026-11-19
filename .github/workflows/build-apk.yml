@@ -163,7 +163,7 @@ jobs:
           base64 --decode android/signing/debug.keystore.b64 > "$HOME/.android/debug.keystore"
           chmod 600 "$HOME/.android/debug.keystore"
           keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey >/dev/null
-      - name: Configure explicit pilot debug signing
+      - name: Configure explicit pilot debug signing and app version
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -172,18 +172,33 @@ jobs:
 
           gradle = Path("app-source/android/app/build.gradle")
           source = gradle.read_text()
+
           run_number = os.environ.get("GITHUB_RUN_NUMBER", "1")
           if not run_number.isdigit():
               raise SystemExit("GITHUB_RUN_NUMBER no es numérico.")
           version_code = int(run_number)
-          source, version_code_count = re.subn(r"(?m)^\\s*versionCode\\s+\\d+\\s*$", f"        versionCode {version_code}", source, count=1)
-          source, version_name_count = re.subn(r'(?m)^\\s*versionName\\s+"[^"]+"\\s*(r'(?m)^(\s*)android\s*\{', source)
+          source, version_code_count = re.subn(
+              r'(?m)^\s*versionCode\s+\d+\s*$',
+              f'        versionCode {version_code}',
+              source,
+              count=1
+          )
+          source, version_name_count = re.subn(
+              r'(?m)^\s*versionName\s+"[^"]+"\s*$',
+              f'        versionName "1.0.{version_code}"',
+              source,
+              count=1
+          )
+          if version_code_count != 1 or version_name_count != 1:
+              raise SystemExit("No se pudieron actualizar versionCode/versionName.")
+
+          android = re.search(r'(?m)^(\s*)android\s*\{', source)
           if not android:
               raise SystemExit("No se encontró el bloque android en app/build.gradle")
-          indent = android.group(1) + "    "
+          child = android.group(1) + "    "
 
           if "signingConfigs.pilotDebug" not in source:
-              signing = """
+              signing_config = """
           signingConfigs {
               pilotDebug {
                   storeFile file(System.getenv("HOME") + "/.android/debug.keystore")
@@ -193,8 +208,8 @@ jobs:
               }
           }
           """
-              signing = "\n".join(indent + line if line else "" for line in signing.strip("\n").split("\n")) + "\n"
-              source = source[:android.end()] + "\n" + signing + source[android.end():]
+              signing_config = "\n".join(child + line if line else "" for line in signing_config.strip("\n").split("\n")) + "\n"
+              source = source[:android.end()] + "\n" + signing_config + source[android.end():]
 
           build_types = re.search(r'(?m)^(\s*)buildTypes\s*\{', source)
           if not build_types:
@@ -206,6 +221,7 @@ jobs:
               raise SystemExit("No se pudo delimitar buildTypes")
           block = tail[:close.start()]
           debug = re.search(r'(?m)^\s*debug\s*\{', block)
+
           if debug:
               debug_indent = re.match(r'\s*', debug.group(0)).group(0) + "    "
               if "signingConfig signingConfigs.pilotDebug" not in block[debug.start():]:
@@ -218,7 +234,7 @@ jobs:
               source = source[:at] + debug_block + source[at:]
 
           gradle.write_text(source)
-          print("Gradle debug build explicitly uses the HF Coach pilot keystore.")
+          print(f"Gradle pilot debug signing configured; versionCode={version_code}, versionName=1.0.{version_code}.")
           PY
       - name: Build debug APK
         working-directory: app-source/android
