@@ -52,6 +52,12 @@ if(!app.includes("window.HFCoachPlanning=")){
   a=app.indexOf("async function loadAthletePortal()");b=app.indexOf("\nfunction renderAthletePortal()",a);
   if(a<0||b<0)throw new Error("No se encontró loadAthletePortal().");
   chunk=replaceOnce(app.slice(a,b),"    renderAthletePortal();",'    renderAthletePortal();\n    window.dispatchEvent(new Event("hf:athlete-data-ready"));',"evento de refresco del atleta");
+  chunk=replaceOnce(chunk,'      sb.from("media_assets").select("*").eq("athlete_id",id).order("created_at",{ascending:false})\n    ]);',
+    '      sb.from("media_assets").select("*").eq("athlete_id",id).order("created_at",{ascending:false}),\n      sb.from("athlete_notifications").select("*").eq("athlete_id",id).order("created_at",{ascending:false})\n    ]);',
+    "la consulta de avisos internos para el atleta");
+  chunk=replaceOnce(chunk,'      sessions:queries[11].data || [], mediaAssets:queries[12].data || []',
+    '      sessions:queries[11].data || [], mediaAssets:queries[12].data || [], notifications:queries[13].data || []',
+    "el almacenamiento de avisos en el portal del atleta");
   app=app.slice(0,a)+chunk+app.slice(b);
   app+='\n\n// Puente de datos para el módulo de ciclos de HF Coach.\nwindow.HFCoachPlanning=Object.freeze({getClient:()=>getClient(),getOrganizationId:()=>organizationId,getCurrentUserId:()=>currentUserId,getCurrentRole:()=>currentRole,getAthletes:()=>data.athletes||[],getRecords:()=>data.records||[],getPlans:()=>data.plans||[],getAthletePortalData:()=>athletePortalData,refreshCoachData:()=>loadData()});\n';
 }
