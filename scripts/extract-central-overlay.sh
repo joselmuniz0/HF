@@ -13,6 +13,7 @@ node scripts/patch-central-stage3.mjs
 node scripts/patch-central-stage4.mjs
 node scripts/patch-central-athlete-registration.mjs
 node scripts/patch-central-coach-invitations.mjs
+node scripts/patch-central-auth-singleton.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
 
@@ -21,6 +22,11 @@ grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
 grep -q "canonicalInviteHost = 'hf-coach-central.vercel.app'" .hf-central/admin/app.js
 grep -q "function showLoginAfterAcceptedInvitation" .hf-central/admin/coach-invitations.js
 grep -q "No hay invitaciones pendientes." .hf-central/admin/coach-invitations.js
+grep -q 'window.HF_GET_SUPABASE_CLIENT = getClient' .hf-central/admin/app.js
+grep -q 'restoreAuthenticatedSessionOnLoad' .hf-central/admin/app.js
+grep -q 'No se pudo guardar la configuración local' .hf-central/admin/app.js
+grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/recovery.js
+grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/coach-invitations.js
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
