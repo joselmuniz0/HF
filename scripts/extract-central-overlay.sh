@@ -15,6 +15,11 @@ node scripts/patch-central-athlete-registration.mjs
 node scripts/patch-central-coach-invitations.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
+node scripts/patch-central-bar-path-prototype.mjs
+
+node --check prototypes/bar-path/bar-path-core.mjs
+node --check prototypes/bar-path/bar-path-app.mjs
+node --test tests/bar-path-core.test.mjs
 
 # Regression checks for coach invitations: only the applicable form is visible and invite status is authoritative.
 grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
@@ -77,6 +82,10 @@ test -f .hf-central/supabase/migrations/20261119154000_coach_invitation_role_gua
 test -f .hf-central/supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql
 test -f .hf-central/supabase/migrations/20261119234500_hf_video_analysis_media_link.sql
 test -f .hf-central/admin/coach-invitations.js
+test -f .hf-central/admin/labs/bar-path/index.html
+test -f .hf-central/admin/labs/bar-path/bar-path-app.mjs
+test -f .hf-central/admin/labs/bar-path/bar-path-core.mjs
+grep -q 'hf-bar-path-launch' .hf-central/admin/index.html
 grep -q 'create-coach-invitation' .hf-central/admin/app.js
 grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts

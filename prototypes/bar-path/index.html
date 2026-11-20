@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#20272b">
+  <title>HF Coach — Laboratorio de trayectoria de barra</title>
+  <link rel="stylesheet" href="./bar-path.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">HF COACH</div>
+    <div>
+      <h1>Laboratorio de trayectoria de barra</h1>
+      <p>Prototipo experimental · etapa 2</p>
+    </div>
+  </header>
+  <main class="layout">
+    <section class="intro">
+      <h2>Seguimiento visual del disco de la barra</h2>
+      <p>Este laboratorio sigue un punto visual del disco del extremo cercano en una toma lateral. Procesa el video localmente en el navegador. No lo sube a HF Coach ni lo guarda en Supabase.</p>
+      <p class="warning"><strong>Importante:</strong> la correlación del seguimiento no es una probabilidad de confianza. Las pérdidas quedan sin coordenadas, no se completan por interpolación. Los eventos son candidatos y deben ser validados por el coach.</p>
+    </section>
+
+    <section class="panel">
+      <h2>1. Video y configuración</h2>
+      <div class="form-grid">
+        <label>Video local
+          <input id="videoFile" type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm,.m4v">
+        </label>
+        <label>Levantamiento
+          <select id="liftType">
+            <option value="Snatch">Arranque (Snatch)</option>
+            <option value="Clean">Cargada (Clean)</option>
+            <option value="Jerk">Envión (Jerk)</option>
+          </select>
+        </label>
+        <label>Frecuencia solicitada
+          <select id="sampleFps">
+            <option value="50" selected>50 cuadros/s</option>
+            <option value="60">60 cuadros/s</option>
+            <option value="30">30 cuadros/s</option>
+            <option value="25">25 cuadros/s</option>
+            <option value="15">15 cuadros/s</option>
+          </select>
+        </label>
+        <label>Diámetro / referencia física
+          <div class="unit-input"><input id="referenceLength" type="number" min="0.01" max="5" step="0.001" value="0.45"><span>metros</span></div>
+        </label>
+        <label>Radio de búsqueda
+          <select id="searchRadius">
+            <option value="20">20 px</option>
+            <option value="34" selected>34 px</option>
+            <option value="48">48 px</option>
+            <option value="64">64 px</option>
+          </select>
+        </label>
+        <label>Correlación mínima
+          <select id="minCorrelation">
+            <option value="0.45">0,45 · permisiva</option>
+            <option value="0.52" selected>0,52 · equilibrada</option>
+            <option value="0.62">0,62 · estricta</option>
+            <option value="0.72">0,72 · muy estricta</option>
+          </select>
+        </label>
+      </div>
+      <div class="toolbar">
+        <button id="loadVideo" class="secondary" type="button">Cargar / preparar video</button>
+        <button id="startTracking" class="primary" type="button">Iniciar seguimiento</button>
+        <button id="resetLab" class="quiet" type="button">Restablecer</button>
+      </div>
+      <p id="videoInfo" class="muted">No hay video cargado.</p>
+      <p class="notice">Recomendación de captura: cámara fija, vista lateral, disco y cuerpo completos, sin paneo ni zoom. Para el prototipo, un intento por video y duración máxima de 20 segundos. La frecuencia solicitada no demuestra el FPS nativo del archivo: ese dato debe contrastarse con los metadatos originales o Kinovea.</p>
+    </section>
+
+    <section class="panel">
+      <h2>2. Marcar la barra y calibrar</h2>
+      <div class="canvas-toolbar">
+        <label>Modo de clic
+          <select id="canvasMode">
+            <option value="seed" selected>Marcar punto inicial</option>
+            <option value="calibrate">Calibrar con una longitud conocida</option>
+            <option value="correct">Corregir el punto en este cuadro</option>
+          </select>
+        </label>
+        <p id="canvasModeHint" class="muted">Hacé clic en el centro del disco visible de la barra en el fotograma inicial.</p>
+      </div>
+      <div class="frame-wrap">
+        <canvas id="frameCanvas" width="960" height="540" aria-label="Fotograma de video con trayectoria superpuesta"></canvas>
+      </div>
+      <p id="canvasHelp" class="muted" hidden>Para calibrar, marcá dos extremos opuestos del diámetro del disco. El valor por defecto es 0,45 m; cambialo cuando uses otra referencia de longitud conocida.</p>
+      <div class="slider-row">
+        <label for="frameSlider">Revisión cuadro por cuadro</label>
+        <input id="frameSlider" type="range" min="0" max="0" value="0" disabled>
+        <span id="frameReadout" class="readout">Sin análisis</span>
+      </div>
+      <progress id="progress" max="1" value="0" hidden></progress>
+      <p id="status" class="status" role="status" aria-live="polite">Cargá un video lateral para comenzar.</p>
+      <p class="notice">Para corregir una oclusión: seleccioná el cuadro con el control deslizante, elegí “Corregir el punto” y hacé clic sobre el centro del disco. El seguimiento posterior se vuelve a calcular desde esa corrección manual.</p>
+    </section>
+
+    <section class="panel">
+      <h2>3. Trayectoria y variables temporales</h2>
+      <div id="metrics" class="metrics"></div>
+      <div class="chart-grid">
+        <div>
+          <h3>Trayectoria XY de la barra</h3>
+          <canvas id="trajectoryCanvas" width="720" height="420"></canvas>
+          <p id="trajectoryLegend" class="muted">La trayectoria aparecerá después del seguimiento.</p>
+        </div>
+        <div>
+          <h3>Altura relativa en el tiempo</h3>
+          <canvas id="timeCanvas" width="720" height="300"></canvas>
+          <p class="muted">Eje vertical positivo hacia arriba. Los tramos sin seguimiento se interrumpen.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>4. Eventos candidatos y revisión de fases</h2>
+      <p>El sistema propone referencias temporales desde la señal de la barra. No determina por sí solo la entrada del atleta, el split, la recepción en rack ni la estabilización.</p>
+      <h3>Candidatos automáticos</h3>
+      <div id="candidateList" class="list"></div>
+      <h3>Marcas validadas / corregidas por el coach</h3>
+      <div class="event-editor">
+        <label>Evento o límite de fase
+          <select id="eventLabel"></select>
+        </label>
+        <button id="addEvent" class="secondary" type="button">Marcar en el cuadro seleccionado</button>
+      </div>
+      <div id="eventList" class="list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>5. Exportar para contrastar con Kinovea</h2>
+      <p>La exportación conserva tiempos, coordenadas, desplazamientos, derivadas, correlación y estado de cada cuadro. No incluye el video original.</p>
+      <div class="toolbar">
+        <button id="exportCsv" class="secondary" type="button" disabled>Exportar serie CSV</button>
+        <button id="exportJson" class="secondary" type="button" disabled>Exportar análisis JSON</button>
+      </div>
+      <p class="notice">Antes de comparar, verificá en Kinovea el FPS real, la escala, el mismo punto del disco, el sentido de ejes y los tiempos de referencia. Una trayectoria en píxeles solo se convierte en metros si la referencia está coplanar con el movimiento y bien medida.</p>
+    </section>
+
+    <section class="limits">
+      <h2>Alcance y limitaciones de esta versión</h2>
+      <ul>
+        <li>Seguimiento 2D de un punto visual en el disco cercano; no es captura 3D ni identifica el centro de masa de la barra.</li>
+        <li>La plantilla puede perder el objeto por oclusión, rotación, desenfoque, reflejos o cambios de iluminación. Esas pérdidas deben corregirse manualmente.</li>
+        <li>Velocidad y aceleración son derivadas sensibles al ruido; no equivalen a fuerza ni potencia.</li>
+        <li>Los candidatos de fase son referencias para revisión, no conclusiones automáticas sobre la técnica.</li>
+        <li>Esta versión no sustituye el videoanálisis vigente ni guarda datos en cuentas de atletas.</li>
+      </ul>
+    </section>
+  </main>
+  <video id="sourceVideo" playsinline muted preload="auto" aria-hidden="true"></video>
+  <script type="module" src="./bar-path-app.mjs"></script>
+</body>
+</html>
