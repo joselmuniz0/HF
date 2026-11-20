@@ -1,0 +1,224 @@
+name: HF Coach iOS Simulator Validation
+
+on:
+  push:
+    branches:
+      - feature/multiplatform-ios-barpath-v2
+    paths:
+      - ".github/workflows/build-ios-simulator.yml"
+      - "HF-Coach-Android-Source.zip"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-launch:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Inspect and extract Capacitor source
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f HF-Coach-Android-Source.zip
+          mkdir -p "$RUNNER_TEMP/hf-coach-source"
+          unzip -q HF-Coach-Android-Source.zip -d "$RUNNER_TEMP/hf-coach-source"
+
+          APP_DIR="$(python3 - "$RUNNER_TEMP/hf-coach-source" <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          candidates = []
+          for manifest in root.rglob("package.json"):
+              if "node_modules" in manifest.parts:
+                  continue
+              try:
+                  data = json.loads(manifest.read_text())
+              except Exception:
+                  continue
+              deps = {**data.get("dependencies", {}), **data.get("devDependencies", {})}
+              if "@capacitor/core" in deps and "@capacitor/cli" in deps:
+                  candidates.append((manifest.parent, data))
+          if not candidates:
+              raise SystemExit("No encontré un package.json con @capacitor/core y @capacitor/cli. No se generará un target iOS a ciegas.")
+          candidates.sort(key=lambda item: (len(item[0].parts), str(item[0])))
+          print(candidates[0][0])
+          PY
+          )"
+          echo "app_dir=$APP_DIR" >> "$GITHUB_OUTPUT"
+          echo "HF source folder: $APP_DIR"
+
+      - name: Install dependencies and matching Capacitor iOS package
+        id: dependencies
+        shell: bash
+        working-directory: ${{ steps.source.outputs.app_dir }}
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+          CORE_VERSION="$(node -p "require('@capacitor/core/package.json').version")"
+          CLI_VERSION="$(node -p "require('@capacitor/cli/package.json').version")"
+          echo "core_version=$CORE_VERSION" >> "$GITHUB_OUTPUT"
+          echo "cli_version=$CLI_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Capacitor core: $CORE_VERSION"
+          echo "Capacitor CLI: $CLI_VERSION"
+
+          npm install --no-save --no-package-lock "@capacitor/ios@$CORE_VERSION"
+          npx cap --version
+
+      - name: Generate and synchronize iOS native project
+        shell: bash
+        working-directory: ${{ steps.source.outputs.app_dir }}
+        run: |
+          set -euo pipefail
+          if [ ! -d ios ]; then
+            npx cap add ios
+          fi
+          npx cap sync ios
+          test -d ios/App
+          echo "iOS native project generated and synchronized."
+
+      - name: Build for iPhone Simulator
+        id: build
+        shell: bash
+        working-directory: ${{ steps.source.outputs.app_dir }}
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcrun simctl list devices available > "$RUNNER_TEMP/available-simulators.txt"
+          cat "$RUNNER_TEMP/available-simulators.txt"
+
+          DERIVED="$RUNNER_TEMP/HFCoachDerivedData"
+          mkdir -p "$DERIVED"
+
+          if [ -d ios/App/App.xcworkspace ]; then
+            xcodebuild -workspace ios/App/App.xcworkspace -scheme App -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED" CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
+          elif [ -d ios/App/App.xcodeproj ]; then
+            xcodebuild -project ios/App/App.xcodeproj -scheme App -destination 'generic/platform=iOS Simulator' -derivedDataPath "$DERIVED" CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
+          else
+            echo "No encontré ios/App/App.xcworkspace ni ios/App/App.xcodeproj."
+            exit 1
+          fi
+
+          APP_PATH="$(find "$DERIVED/Build/Products/Debug-iphonesimulator" -maxdepth 1 -type d -name '*.app' -print -quit)"
+          if [ -z "$APP_PATH" ]; then
+            echo "La compilación terminó sin generar un bundle .app para Simulator."
+            exit 1
+          fi
+          echo "app_path=$APP_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Install and launch on an iPhone simulator
+        id: simulator
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEVICE_ID="$(xcrun simctl list devices available -j | python3 -c '
+          import json,sys
+          data=json.load(sys.stdin)
+          devices=[d for group in data.get("devices",{}).values() for d in group if d.get("isAvailable") and d.get("name","").startswith("iPhone")]
+          print(devices[0]["udid"] if devices else "")
+          ')"
+          if [ -z "$DEVICE_ID" ]; then
+            echo "No hay un simulador iPhone disponible en este runner."
+            exit 1
+          fi
+
+          APP_PATH="${{ steps.build.outputs.app_path }}"
+          BUNDLE_ID="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist")"
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "bundle_id=$BUNDLE_ID" >> "$GITHUB_OUTPUT"
+
+          xcrun simctl boot "$DEVICE_ID" 2>/dev/null || true
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          xcrun simctl install "$DEVICE_ID" "$APP_PATH"
+          xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID"
+          mkdir -p "$RUNNER_TEMP/hf-ios-simulator-output"
+          xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/hf-ios-simulator-output/iphone-simulator.png"
+          ditto -c -k --sequesterRsrc --keepParent "$APP_PATH" "$RUNNER_TEMP/hf-ios-simulator-output/HFCoach-iOS-Simulator.app.zip"
+
+      - name: Write simulator validation report
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          APP_DIR: ${{ steps.source.outputs.app_dir }}
+          CORE_VERSION: ${{ steps.dependencies.outputs.core_version }}
+          CLI_VERSION: ${{ steps.dependencies.outputs.cli_version }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          SIMULATOR_OUTCOME: ${{ steps.simulator.outcome }}
+          DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
+          BUNDLE_ID: ${{ steps.simulator.outputs.bundle_id }}
+          WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'docs/ios-simulator-validation.md';
+            const ok = process.env.BUILD_OUTCOME === 'success' && process.env.SIMULATOR_OUTCOME === 'success';
+            const status = ok ? 'BUILD_AND_LAUNCH_OK' : 'FAILED_OR_INCOMPLETE';
+            const body = [
+              '# HF Coach — validación del simulador iOS',
+              '',
+              '- Estado: **' + status + '**',
+              '- Fecha UTC: ' + new Date().toISOString(),
+              '- Rama: ' + context.ref,
+              '- Fuente: HF-Coach-Android-Source.zip',
+              '- Carpeta de app: ' + (process.env.APP_DIR || 'no identificada'),
+              '- Capacitor core: ' + (process.env.CORE_VERSION || 'no detectado'),
+              '- Capacitor CLI: ' + (process.env.CLI_VERSION || 'no detectado'),
+              '- Build Xcode: ' + (process.env.BUILD_OUTCOME || 'no ejecutado'),
+              '- Arranque simulator: ' + (process.env.SIMULATOR_OUTCOME || 'no ejecutado'),
+              '- Simulator UDID: ' + (process.env.DEVICE_ID || 'no disponible'),
+              '- Bundle ID: ' + (process.env.BUNDLE_ID || 'no disponible'),
+              '- Logs: ' + process.env.WORKFLOW_URL,
+              '',
+              'Esta prueba valida compilación para Simulator, instalación y lanzamiento. No valida cámara, sensores, permisos de dispositivos físicos, subida real de videos ni los flujos de autenticación con cuentas personales.',
+              '',
+              'El artefacto .app de Simulator no se puede instalar en un iPhone físico. Para el iPhone se requiere una compilación firmada para dispositivo y distribución mediante TestFlight o instalación de desarrollo/ad hoc.',
+              ''
+            ].join('\n');
+            let sha;
+            try {
+              const existing = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path,
+                ref: context.ref.replace('refs/heads/','')
+              });
+              sha = existing.data.sha;
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+            await github.rest.repos.createOrUpdateFileContents({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              path,
+              message: 'Record iOS simulator validation result',
+              content: Buffer.from(body, 'utf8').toString('base64'),
+              branch: context.ref.replace('refs/heads/',''),
+              ...(sha ? {sha} : {})
+            });
+            core.summary.addHeading('HF Coach iOS Simulator');
+            core.summary.addRaw(body);
+            await core.summary.write();
+
+      - name: Upload simulator build and screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HFCoach-iOS-Simulator
+          path: ${{ runner.temp }}/hf-ios-simulator-output/
+          if-no-files-found: ignore
+          retention-days: 7
