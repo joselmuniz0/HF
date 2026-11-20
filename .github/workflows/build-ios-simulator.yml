@@ -79,6 +79,39 @@ jobs:
           npm install --no-save --no-package-lock "@capacitor/ios@$CORE_VERSION"
           npx cap --version
 
+      - name: Build web assets required by Capacitor
+        id: web
+        shell: bash
+        working-directory: ${{ steps.source.outputs.app_dir }}
+        run: |
+          set -euo pipefail
+          npm run build
+
+          CONFIG_WEB_DIR="$(node -e "const c=require('./capacitor.config.json'); console.log(c.webDir || 'www')")"
+          if [ -f "$CONFIG_WEB_DIR/index.html" ]; then
+            WEB_DIR="$CONFIG_WEB_DIR"
+          else
+            WEB_DIR=""
+            for candidate in www dist build src/www src/dist src/build; do
+              if [ -f "$candidate/index.html" ]; then
+                WEB_DIR="$candidate"
+                break
+              fi
+            done
+          fi
+
+          if [ -z "$WEB_DIR" ]; then
+            echo "El build web no produjo index.html. Directorios candidatos:"
+            find . -maxdepth 4 -type f -name index.html -not -path './node_modules/*' -print
+            exit 1
+          fi
+
+          if [ "$WEB_DIR" != "$CONFIG_WEB_DIR" ]; then
+            WEB_DIR="$WEB_DIR" node -e "const fs=require('fs'); const p='capacitor.config.json'; const c=JSON.parse(fs.readFileSync(p,'utf8')); c.webDir=process.env.WEB_DIR; fs.writeFileSync(p,JSON.stringify(c,null,2)+'\\n');"
+          fi
+          echo "Capacitor webDir: $WEB_DIR"
+          test -f "$WEB_DIR/index.html"
+
       - name: Generate and synchronize iOS native project
         shell: bash
         working-directory: ${{ steps.source.outputs.app_dir }}
