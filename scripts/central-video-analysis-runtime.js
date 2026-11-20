@@ -61,7 +61,7 @@ async function hfCoachVideoFile() {
 function hfCoachVideoResultHtml(result) {
   const labels=[
     ["Cambio de tronco",result.metrics.torso_change_deg,"°"],["Extensión de rodilla",result.metrics.knee_extension_deg,"°"],
-    ["Extensión de cadera",result.metrics.hip_extension_deg,"°"],["Distancia barra–cadera",result.metrics.bar_hip_distance_ratio,""],
+    ["Extensión de cadera",result.metrics.hip_extension_deg,"°"],["Separación horizontal muñeca–cadera (proxy)",result.metrics.wrist_hip_distance_ratio ?? result.metrics.bar_hip_distance_ratio,""],
     ["Extensión a recepción",result.metrics.extension_to_catch_seconds," s"],["Rodilla en recepción",result.metrics.catch_knee_deg,"°"],
     ["Tronco en recepción",result.metrics.catch_torso_deg,"°"]
   ];
@@ -74,9 +74,9 @@ function hfCoachVideoResultHtml(result) {
     }).join(" ");
     return '<article class="evaluation"><b>'+esc(f.e)+'</b><p class="muted">Error observado: '+esc(f.m)+'</p><p><b>Causas probables (a confirmar):</b> '+esc((f.c||[]).join("; "))+'</p><p><b>Recursos de corrección:</b> '+links+'</p></article>';
   }).join(""):'<p class="muted">Con estos criterios no se marcaron desvíos. Revisá el video igualmente.</p>';
-  return (result.confidence<0.6?'<p class="status error">Confianza baja: el modelo detectó poco el lado del cuerpo. El resultado puede fallar; revisá el encuadre y la iluminación.</p>':'')+
+  return (result.confidence<0.6?'<p class="status error">Visibilidad de puntos corporales baja: el modelo detectó de forma limitada las referencias anatómicas. Revisá los fotogramas antes de interpretar los valores.</p>':'')+
     '<div class="metrics">'+metrics+'</div><h4>Fotogramas clave</h4><div class="hf-video-frames">'+frames+'</div><h4>Hallazgos automáticos</h4>'+findings+
-    '<p class="notice">Estimación 2D desde un solo ángulo. Los valores y hallazgos son orientativos, pueden fallar y deben ser revisados por un coach. No son mediciones biomecánicas de laboratorio ni un diagnóstico médico.</p>';
+    '<p class="notice">Análisis corporal 2D con muestreo aproximado de 15 cuadros/s. Este módulo estima posiciones articulares; no identifica ni sigue el disco de la barra y no calcula su trayectoria, velocidad ni aceleración. La separación muñeca–cadera es solo un proxy corporal, no una medición de la barra. Para estudiar la trayectoria, usar el Laboratorio de trayectoria de barra y validar la calibración con el coach. Todos los hallazgos son orientativos, sujetos a revisión humana y no constituyen diagnóstico médico.</p>';
 }
 async function runCoachVideoAnalysis(event) {
   event.preventDefault();
@@ -131,11 +131,11 @@ async function runCoachVideoAnalysis(event) {
     while(kneeStart<catchIndex&&wristY[kneeStart]>point(validFrames[kneeStart],25).y)kneeStart++;
     const torsoLength=Math.hypot(point(validFrames[start],11).x-point(validFrames[start],23).x,point(validFrames[start],11).y-point(validFrames[start],23).y)||1;
     const torsoChange=inclination(validFrames[kneeStart])-inclination(validFrames[start]);
-    const barDistance=Math.abs(point(validFrames[extensionIndex],15).x-point(validFrames[extensionIndex],23).x)/torsoLength;
+    const wristHipDistance=Math.abs(point(validFrames[extensionIndex],15).x-point(validFrames[extensionIndex],23).x)/torsoLength;
     const extensionToCatch=validFrames[catchIndex].t-validFrames[extensionIndex].t, catchInclination=inclination(validFrames[catchIndex]);
     const snatch=lift==="Snatch", findings=[];
     if(torsoChange>8)findings.push({e:"Caderas suben más rápido que los hombros en el primer tirón",m:"El tronco se inclina "+torsoChange.toFixed(0)+"° más entre el piso y la rodilla",c:["Posición inicial inadecuada","Debilidad de piernas o espalda"],x:[lift+" Deadlift",lift+" Deadlift with Pause"]});
-    if(barDistance>0.45)findings.push({e:"Barra alejada del cuerpo en la extensión",m:"Muñecas a "+barDistance.toFixed(2)+" largos de tronco de la cadera",c:["Trayectoria incorrecta","Extensión prematura","Brazos activados antes de tiempo","Posición inicial inadecuada"],x:[lift+" Pull","Hang "+lift,lift+" High Pull","Muscle "+lift,lift+" Pull from Blocks"]});
+    if(wristHipDistance>0.45)findings.push({e:"Separación horizontal muñeca–cadera elevada (proxy corporal)",m:"La muñeca aparece a "+wristHipDistance.toFixed(2)+" longitudes de tronco respecto de la cadera. Este indicador no mide la distancia del disco ni la trayectoria de la barra.",c:["Revisar visualmente la trayectoria real de la barra y el contacto con el cuerpo"],x:[]});
     if(knee[extensionIndex]<165||hip[extensionIndex]<165)findings.push({e:"Extensión incompleta",m:"Rodilla "+knee[extensionIndex].toFixed(0)+"° y cadera "+hip[extensionIndex].toFixed(0)+"° en el punto de máxima extensión",c:["Equilibrio en talones","Transición apresurada"],x:[lift+" Pull",lift+" High Pull","Hang "+lift]});
     if(extensionToCatch>0.5)findings.push({e:"Entrada lenta bajo la barra",m:extensionToCatch.toFixed(2)+" s entre la extensión y la recepción",c:["Falta de empuje de brazos","Falta de coordinación"],x:snatch?["Snatch Balance","Drop Snatch","Tall Snatch"]:["Tall Clean","Clean with Pause","Front Squat"]});
     if(catchInclination>35)findings.push({e:"Tronco muy inclinado en la recepción",m:"Inclinación del tronco de "+catchInclination.toFixed(0)+"° respecto de la vertical",c:["Movilidad limitada de tobillos o cadera","Recepción con la barra adelantada"],x:snatch?["Overhead Squat","Overhead Squat with Pause"]:["Front Squat","Front Squat with Pause"]});
@@ -155,7 +155,7 @@ async function runCoachVideoAnalysis(event) {
     for(const item of keyframes)images.push({title:item.title,url:await snapshot(item.frame)});
     const metrics={
       torso_change_deg:Number(torsoChange.toFixed(1)),knee_extension_deg:Number(knee[extensionIndex].toFixed(1)),
-      hip_extension_deg:Number(hip[extensionIndex].toFixed(1)),bar_hip_distance_ratio:Number(barDistance.toFixed(3)),
+      hip_extension_deg:Number(hip[extensionIndex].toFixed(1)),wrist_hip_distance_ratio:Number(wristHipDistance.toFixed(3)),
       extension_to_catch_seconds:Number(extensionToCatch.toFixed(3)),catch_knee_deg:Number(knee[catchIndex].toFixed(1)),
       catch_torso_deg:Number(catchInclination.toFixed(1))
     };
