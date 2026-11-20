@@ -56,6 +56,10 @@ function setBusy(value) {
   ["loadVideo", "startTracking", "exportCsv", "exportJson", "addEvent", "resetLab"].forEach(id => {
     $(id).disabled = value;
   });
+  if (!value) {
+    $("exportCsv").disabled = !samples.length;
+    $("exportJson").disabled = !samples.length;
+  }
 }
 function setMode(mode) {
   canvasMode = mode;
@@ -76,6 +80,8 @@ function clearResults() {
   selectedIndex = 0;
   trackTemplate = null;
   $("frameSlider").disabled = true;
+  $("exportCsv").disabled = true;
+  $("exportJson").disabled = true;
   $("frameSlider").value = 0;
   $("frameSlider").max = 0;
   $("frameReadout").textContent = "Sin análisis";
@@ -430,16 +436,23 @@ async function loadLocalVideo() {
 }
 async function runTracking() {
   if (!file || !seedPoint) throw new Error("Cargá un video y marcá primero el centro del disco de la barra.");
-  if (!trackTemplate) {
-    const gray = getGrayFromCurrentFrame();
-    trackTemplate = extractPatch(gray, width, height, seedPoint.x, seedPoint.y, 9);
-    if (!trackTemplate) throw new Error("El punto elegido está demasiado cerca del borde. Marcá el centro del disco más hacia adentro.");
-  }
   const fps = Number($("sampleFps").value);
   const count = Math.floor(video.duration * fps) + 1;
   if (count > 1200) throw new Error("La muestra supera 1.200 cuadros. Reducí la frecuencia o recortá el video.");
   samples = [];
-  let template = trackTemplate;
+  kinematics = [];
+  candidates = [];
+  events = [];
+  lastSummary = null;
+  selectedIndex = 0;
+  $("metrics").innerHTML = "";
+  $("candidateList").replaceChildren();
+  $("eventList").replaceChildren();
+  await seekVideo(0);
+  const initialGray = getGrayFromCurrentFrame();
+  let template = extractPatch(initialGray, width, height, seedPoint.x, seedPoint.y, 9);
+  if (!template) throw new Error("El punto elegido está demasiado cerca del borde. Marcá el centro del disco más hacia adentro.");
+  trackTemplate = template;
   let previous = null, previousPrevious = null;
   setBusy(true);
   $("progress").hidden = false; $("progress").value = 0;
@@ -535,6 +548,9 @@ function handleCanvasClick(event) {
   }
   if (canvasMode === "calibrate") {
     calibrationClicks.push(point);
+    if (calibrationClicks.length === 1) {
+      $("canvasModeHint").textContent = "Marcá ahora el extremo opuesto del diámetro del disco.";
+    }
     if (calibrationClicks.length === 2) {
       const distance = Math.hypot(calibrationClicks[1].x - calibrationClicks[0].x, calibrationClicks[1].y - calibrationClicks[0].y);
       const meters = Number($("referenceLength").value);
@@ -669,7 +685,13 @@ $("addEvent").addEventListener("click", () => addEvent());
 $("exportCsv").addEventListener("click", exportCsv);
 $("exportJson").addEventListener("click", exportJson);
 $("resetLab").addEventListener("click", resetLab);
-$("liftType").addEventListener("change", updatePhaseLabels);
+$("liftType").addEventListener("change", () => {
+  updatePhaseLabels();
+  if (samples.length) {
+    candidates = detectCandidateEvents(kinematics, $("liftType").value);
+    renderCandidates();
+  }
+});
 window.addEventListener("beforeunload", () => { if (objectUrl) URL.revokeObjectURL(objectUrl); });
 
 updatePhaseLabels();
