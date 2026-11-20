@@ -18,6 +18,7 @@ node scripts/patch-central-video-analysis.mjs
 node scripts/patch-central-auth-singleton.mjs
 
 # Regression checks for coach invitations: only the applicable form is visible and invite status is authoritative.
+set -x
 grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
 grep -q "canonicalInviteHost = 'hf-coach-central.vercel.app'" .hf-central/admin/app.js
 grep -q "function showLoginAfterAcceptedInvitation" .hf-central/admin/coach-invitations.js
@@ -27,6 +28,7 @@ grep -q 'restoreAuthenticatedSessionOnLoad' .hf-central/admin/app.js
 grep -q 'No se pudo guardar la configuración local' .hf-central/admin/app.js
 grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/recovery.js
 grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/coach-invitations.js
+set +x
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
