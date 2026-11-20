@@ -1,6 +1,12 @@
 name: HF Coach iOS Simulator Validation
 
 on:
+  push:
+    branches:
+      - feature/multiplatform-ios-barpath-v2
+    paths:
+      - ".github/workflows/build-ios-simulator.yml"
+      - "HF-Coach-Android-Source.zip"
   pull_request:
     branches:
       - main
