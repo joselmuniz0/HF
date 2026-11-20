@@ -36,7 +36,9 @@ const panel=[
 '            <div id="cpWeekBuilder" class="cp-week-builder"></div>',
 '            <div class="cp-save-template-panel"><div><b>Guardar como plantilla del coach</b><small>Reutilizable con otros atletas.</small></div><label>Nombre<input id="cpTemplateName" placeholder="Base preparatoria 4 días"></label><label>Descripción<input id="cpTemplateDescription" placeholder="Objetivo y características"></label><button type="button" class="quiet" id="cpSaveTemplate">Guardar plantilla</button></div>',
 '            <div class="cp-submit-row"><button type="submit" class="primary" id="cpSaveDraft">Guardar borrador</button><span>Revisá el detalle y publicalo cuando esté listo para el atleta.</span></div>',
-'          </form></div></section>'
+'          </form></div>',
+'        <div hidden aria-hidden="true"><form id="planForm"><select id="planAthlete"></select><div id="planSessionBuilder"></div><button type="button" id="addPlanSessionBtn"></button><button type="submit"></button></form><div id="plansList"></div></div>',
+'      </section>'
 ].join("\n");
 html=html.slice(0,start)+panel+html.slice(end);
 if(!html.includes('src="./coach-planning.mjs"')) html=replaceOnce(html,'  <script type="module" src="./app.js"></script>','  <script type="module" src="./app.js"></script>\n  <script type="module" src="./coach-planning.mjs"></script>',"la carga del módulo");
