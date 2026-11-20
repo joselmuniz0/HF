@@ -15,6 +15,7 @@ node scripts/patch-central-athlete-registration.mjs
 node scripts/patch-central-coach-invitations.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
+node scripts/patch-central-auth-singleton.mjs
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
@@ -84,5 +85,9 @@ grep -q 'admins create athletes for coaches' .hf-central/supabase/migrations/202
 grep -q 'athleteRegistrationForm' .hf-central/admin/index.html
 grep -q 'recovery.js' .hf-central/admin/index.html
 grep -q 'passwordRecoveryRequestBtn' .hf-central/admin/recovery.js
+grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/app.js
+grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/recovery.js
+grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/coach-invitations.js
+grep -q 'id="loginStatus"' .hf-central/admin/index.html
 
 echo "HF Central overlay extracted, Stage 2 activation patch applied, and updated setup files generated."
