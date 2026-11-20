@@ -658,13 +658,35 @@ async function refresh() {
     setStatus("No se pudo actualizar la planificación: " + (error.message || error), "error");
   }
 }
+function renderAthleteNotifications(notifications) {
+  if (!notifications.length) return "";
+  return '<div class="cp-notice-list"><h4>Avisos de tu coach</h4>' +
+    notifications.map(notification =>
+      '<div class="cp-athlete-notice"><div><b>' + esc(notification.title || "Nueva planificación disponible") + '</b>' +
+      (notification.body ? '<p>' + esc(notification.body) + '</p>' : '') +
+      '<small>' + dateLabel(notification.created_at) + '</small></div>' +
+      '<button type="button" class="quiet" data-cp-notification-read="' + esc(notification.id) + '">Marcar como leído</button></div>'
+    ).join("") + '</div>';
+}
+async function markNotificationRead(notificationId) {
+  const d = context().getAthletePortalData() || {};
+  const athleteId = d.athlete && d.athlete.id;
+  const notification = (d.notifications || []).find(item => item.id === notificationId);
+  if (!athleteId || !notification || notification.read_at) return;
+  const readAt = new Date().toISOString();
+  const result = await client().from("athlete_notifications").update({ read_at: readAt }).eq("id", notificationId).eq("athlete_id", athleteId);
+  if (result.error) throw result.error;
+  notification.read_at = readAt;
+  renderAthletePlans();
+}
 async function renderAthletePlans() {
   const c = context();
   if (!c || !c.getAthletePortalData) return;
   const d = c.getAthletePortalData() || {};
   const plans = (d.plans || []).filter(p => p.status === "active");
+  const notificationMarkup = renderAthleteNotifications((d.notifications || []).filter(n => !n.read_at));
   if (!plans.length) {
-    $("athletePlans").innerHTML = '<div class="empty">Tu coach todavía no publicó una planificación.</div>';
+    $("athletePlans").innerHTML = notificationMarkup + '<div class="empty">Tu coach todavía no publicó una planificación.</div>';
     return;
   }
   try {
@@ -680,7 +702,7 @@ async function renderAthletePlans() {
     if (blocksResult.error) throw blocksResult.error;
     const weeks = weeksResult.data || [];
     const blocks = blocksResult.data || [];
-    $("athletePlans").innerHTML = plans.map(plan => {
+    $("athletePlans").innerHTML = notificationMarkup + plans.map(plan => {
       const planWeeks = weeks.filter(w => w.plan_id === plan.id);
       const planSessions = sessions.filter(s => s.plan_id === plan.id);
       return '<article class="cp-athlete-plan">' +
@@ -715,12 +737,18 @@ async function renderAthletePlans() {
         '</article>';
     }).join("");
   } catch (error) {
-    $("athletePlans").innerHTML = '<div class="status error">La planificación está publicada, pero no se pudieron cargar todos sus bloques: ' + esc(error.message || error) + '</div>';
+    $("athletePlans").innerHTML = notificationMarkup + '<div class="status error">La planificación está publicada, pero no se pudieron cargar todos sus bloques: ' + esc(error.message || error) + '</div>';
   }
 }
 function onCycleClick(event) {
-  const button = event.target.closest("[data-cp-publish], [data-cp-view]");
+  const button = event.target.closest("[data-cp-publish], [data-cp-view], [data-cp-notification-read]");
   if (!button) return;
+  if (button.hasAttribute("data-cp-notification-read")) {
+    markNotificationRead(button.dataset.cpNotificationRead).catch(error => {
+      $("athletePlans").insertAdjacentHTML("afterbegin", '<div class="status error">No se pudo marcar el aviso como leído: ' + esc(error.message || error) + '</div>');
+    });
+    return;
+  }
   if (button.hasAttribute("data-cp-publish")) publishPlan(button.dataset.cpPublish);
   else viewPlan(button.dataset.cpView);
 }
@@ -754,6 +782,7 @@ function bind() {
   });
   $("cpLoadZetaExample").addEventListener("click", zetaExample);
   $("cpPlanList").addEventListener("click", onCycleClick);
+  $("athletePlans").addEventListener("click", onCycleClick);
 }
 function start() {
   if (!root) return;
