@@ -1,0 +1,76 @@
+name: Audit HF Android source archive
+
+on:
+  push:
+    branches:
+      - feature/multiplatform-ios-barpath-v2
+    paths:
+      - ".github/workflows/audit-hf-source.yml"
+      - "HF-Coach-Android-Source.zip"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Inspect source archive without exposing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="HF-Coach-Android-Source.zip"
+          test -f "$archive"
+          report="$RUNNER_TEMP/hf-source-audit.txt"
+
+          {
+            echo "HF Coach source archive audit"
+            echo "Archive size: $(stat -c%s "$archive") bytes"
+            echo
+            echo "Top-level entries:"
+            unzip -Z1 "$archive" | awk -F/ 'NF>0 {print $1}' | sort -u | head -80
+            echo
+            echo "Capacitor / iOS / native project file paths:"
+            unzip -Z1 "$archive" | grep -Ei '(^|/)(package\.json|capacitor\.config\.[^/]+|Podfile|Info\.plist|\.swift|build\.gradle|AndroidManifest\.xml)$|(^|/)(ios|android)/' | head -250 || true
+            echo
+            echo "Package manifests and Capacitor dependency versions:"
+            while IFS= read -r entry; do
+              case "$entry" in
+                package.json)
+                  manifest="$(unzip -p "$archive" "$entry")"
+                  MANIFEST="$manifest" ENTRY="$entry" node - <<'NODE'
+          const p = JSON.parse(process.env.MANIFEST);
+          console.log(JSON.stringify({
+            file: process.env.ENTRY,
+            name: p.name ?? null,
+            version: p.version ?? null,
+            packageManager: p.packageManager ?? null,
+            scripts: Object.keys(p.scripts ?? {}),
+            capacitor: Object.fromEntries(
+              Object.entries({...p.dependencies, ...p.devDependencies})
+                .filter(([name]) => name.startsWith("@capacitor/") || /capacitor/i.test(name))
+            )
+          }, null, 2));
+          NODE
+                  ;;
+              esac
+            done < <(unzip -Z1 "$archive" | grep -E '(^|/)package\.json$' | head -30)
+            echo
+            echo "iOS directory present:"
+            if unzip -Z1 "$archive" | grep -Eq '(^|/)ios/'; then echo "yes"; else echo "no"; fi
+            echo
+            echo "Swift sources present:"
+            if unzip -Z1 "$archive" | grep -Eq '\.swift$'; then echo "yes"; else echo "no"; fi
+          } | tee "$report"
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: hf-source-archive-audit
+          path: ${{ runner.temp }}/hf-source-audit.txt
+          if-no-files-found: error
+          retention-days: 7
