@@ -91,5 +91,9 @@ grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/coach-invitations.js
 grep -q 'id="loginStatus"' .hf-central/admin/index.html
 grep -q 'restoreAuthenticatedSessionOnLoad' .hf-central/admin/app.js
 grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
+grep -q "canonicalInviteHost = 'hf-coach-central.vercel.app'" .hf-central/admin/app.js
+grep -q 'No hay invitaciones pendientes.' .hf-central/admin/coach-invitations.js
+grep -q '!item.accepted_at && !item.revoked_at' .hf-central/admin/coach-invitations.js
 
+echo "HF Central invite domain and revocation checks passed." 
 echo "HF Central overlay extracted, Stage 2 activation patch applied, and updated setup files generated."
