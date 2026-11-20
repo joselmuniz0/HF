@@ -49,6 +49,7 @@ if(!app.includes("async function runCoachVideoAnalysis(event)")) {
   app = app.slice(0, athleteRenderStart) + athleteRender + app.slice(athleteRenderEnd);
   app=replaceOnce(app,"function renderOperationalModules() {\n  refreshOperationalSelects();",
     "function renderOperationalModules() {\n  refreshOperationalSelects();\n  populateCoachVideoAssetOptions();","actualización del selector de videos");
+  app=replaceOnce(app,"['Distancia barra–cadera', metrics.bar_hip_distance_ratio, '']","['Separación horizontal muñeca–cadera (proxy corporal)', (metrics.wrist_hip_distance_ratio ?? metrics.bar_hip_distance_ratio), '']","etiqueta de indicador corporal");
   app=replaceOnce(app,"$('loginBtn').addEventListener('click', signIn);",code+"\n$('loginBtn').addEventListener('click', signIn);","motor de videoanálisis");
   app=replaceOnce(app,"$('athleteVideoForm').addEventListener('submit', uploadAthleteVideo);",
     "$('athleteVideoForm').addEventListener('submit', uploadAthleteVideo);\n"+
@@ -60,8 +61,6 @@ if(!app.includes("async function runCoachVideoAnalysis(event)")) {
     "$('evaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-evaluation-video]'); if (button) showEvaluationVideo(button); });\n"+
     "$('athleteEvaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-athlete-evaluation-video]'); if (button) showEvaluationVideo(button); });\n"+
     "$('athletes').addEventListener('click', function(event){ const button = event.target.closest('[data-view-athlete-evaluations]'); if (!button) return; $('athleteFilter').value = button.dataset.viewAthleteEvaluations; renderEvaluations(); $('evaluations').scrollIntoView({behavior:'smooth',block:'start'}); });","eventos de videoanálisis");
-  app=app.replaceAll("Distancia barra–cadera","Separación horizontal muñeca–cadera (proxy corporal)");
-  app=app.replaceAll("metrics.bar_hip_distance_ratio","(metrics.wrist_hip_distance_ratio ?? metrics.bar_hip_distance_ratio)");
   fs.writeFileSync(appPath,app,"utf8");
 }
 let html=fs.readFileSync(htmlPath,"utf8");
