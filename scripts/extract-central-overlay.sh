@@ -107,6 +107,8 @@ grep -q 'data-plan-percent' .hf-central/admin/app.js
 grep -q 'hfCoachCyclePlanner' .hf-central/admin/index.html
 grep -q 'create_training_cycle_atomic' .hf-central/admin/coach-planning.mjs
 grep -q 'publish_training_plan' .hf-central/admin/coach-planning.mjs
+grep -q 'data-cp-notification-read' .hf-central/admin/coach-planning.mjs
+grep -q 'athlete_notifications' .hf-central/admin/app.js
 grep -q 'training_plan_item_blocks' .hf-central/admin/coach-planning.mjs
 grep -q 'create-coach-invitation' .hf-central/admin/app.js
 grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
