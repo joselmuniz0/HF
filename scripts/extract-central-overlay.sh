@@ -18,10 +18,15 @@ node scripts/patch-central-video-analysis.mjs
 node scripts/patch-central-bar-path-prototype.mjs
 node scripts/patch-central-planning-builder.mjs
 node --check scripts/patch-central-planning-builder.mjs
+node scripts/patch-central-cycle-planner.mjs
+node --check scripts/patch-central-cycle-planner.mjs
+node --check .hf-central/admin/coach-planning.mjs
+node --check .hf-central/admin/cycle-core.mjs
 
 node --check prototypes/bar-path/bar-path-core.mjs
 node --check prototypes/bar-path/bar-path-app.mjs
 node --test tests/bar-path-core.test.mjs
+node --test tests/training-cycle-core.test.mjs
 
 # Regression checks for coach invitations: only the applicable form is visible and invite status is authoritative.
 grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
@@ -49,6 +54,7 @@ cp supabase/migrations/20261119154000_coach_invitation_role_guard.sql .hf-centra
 cp supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql .hf-central/supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql
 cp supabase/migrations/20261119234500_hf_video_analysis_media_link.sql .hf-central/supabase/migrations/20261119234500_hf_video_analysis_media_link.sql
 cp supabase/migrations/20261120182557_create_training_plan_atomic.sql .hf-central/supabase/migrations/20261120182557_create_training_plan_atomic.sql
+cp supabase/migrations/20261121120000_structured_training_cycles.sql .hf-central/supabase/migrations/20261121120000_structured_training_cycles.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -85,6 +91,9 @@ test -f .hf-central/supabase/migrations/20261119154000_coach_invitation_role_gua
 test -f .hf-central/supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql
 test -f .hf-central/supabase/migrations/20261119234500_hf_video_analysis_media_link.sql
 test -f .hf-central/supabase/migrations/20261120182557_create_training_plan_atomic.sql
+test -f .hf-central/supabase/migrations/20261121120000_structured_training_cycles.sql
+test -f .hf-central/admin/coach-planning.mjs
+test -f .hf-central/admin/cycle-core.mjs
 test -f .hf-central/admin/coach-invitations.js
 test -f .hf-central/admin/labs/bar-path/index.html
 test -f .hf-central/admin/labs/bar-path/bar-path-app.mjs
@@ -93,6 +102,10 @@ grep -q 'hf-bar-path-launch' .hf-central/admin/index.html
 grep -q 'planSessionBuilder' .hf-central/admin/index.html
 grep -q 'create_training_plan_atomic' .hf-central/admin/app.js
 grep -q 'data-plan-percent' .hf-central/admin/app.js
+grep -q 'hfCoachCyclePlanner' .hf-central/admin/index.html
+grep -q 'create_training_cycle_atomic' .hf-central/admin/coach-planning.mjs
+grep -q 'publish_training_plan' .hf-central/admin/coach-planning.mjs
+grep -q 'training_plan_item_blocks' .hf-central/admin/coach-planning.mjs
 grep -q 'create-coach-invitation' .hf-central/admin/app.js
 grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts
