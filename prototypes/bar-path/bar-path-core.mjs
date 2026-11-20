@@ -47,18 +47,49 @@ export function normalizedCrossCorrelation(template, candidate) {
   return denominator > 1e-8 ? numerator / denominator : -1;
 }
 
+function prepareTemplateStats(template) {
+  let sum = 0;
+  for (const value of template.data) sum += value;
+  const mean = sum / template.data.length;
+  let variance = 0;
+  for (const value of template.data) variance += (value - mean) ** 2;
+  return { data: template.data, size: template.size, radius: template.radius, mean, variance };
+}
+
+function scoreTemplateAt(stats, gray, width, cx, cy) {
+  const size = stats.size, r = stats.radius;
+  const x0 = cx - r, y0 = cy - r;
+  let sum = 0;
+  for (let y = 0; y < size; y++) {
+    const start = (y0 + y) * width + x0;
+    for (let x = 0; x < size; x++) sum += gray[start + x];
+  }
+  const mean = sum / (size * size);
+  let numerator = 0, variance = 0, index = 0;
+  for (let y = 0; y < size; y++) {
+    const start = (y0 + y) * width + x0;
+    for (let x = 0; x < size; x++, index++) {
+      const a = stats.data[index] - stats.mean;
+      const b = gray[start + x] - mean;
+      numerator += a * b;
+      variance += b * b;
+    }
+  }
+  const denominator = Math.sqrt(stats.variance * variance);
+  return denominator > 1e-8 ? numerator / denominator : -1;
+}
+
 export function searchTemplate(gray, width, height, template, origin, searchRadius = 32, step = 2) {
   if (!template || !origin) return null;
-  const r = template.radius;
+  const r = template.radius, stats = prepareTemplateStats(template);
   const minX = Math.max(r, Math.floor(origin.x - searchRadius));
   const maxX = Math.min(width - r - 1, Math.ceil(origin.x + searchRadius));
   const minY = Math.max(r, Math.floor(origin.y - searchRadius));
   const maxY = Math.min(height - r - 1, Math.ceil(origin.y + searchRadius));
   let best = { x: null, y: null, score: -1 };
   const evaluate = (x, y) => {
-    const patch = extractPatch(gray, width, height, x, y, r);
-    if (!patch) return;
-    const score = normalizedCrossCorrelation(template.data, patch.data);
+    if (x < r || y < r || x >= width - r || y >= height - r) return;
+    const score = scoreTemplateAt(stats, gray, width, x, y);
     if (score > best.score) best = { x, y, score };
   };
   for (let y = minY; y <= maxY; y += step) {
@@ -218,9 +249,9 @@ export function detectCandidateEvents(kinematics, lift = "Snatch") {
   const peaks = localPeaks(kinematics.map(s => s.velocityY));
   const selectedPeaks = peaks
     .filter(i => kinematics[i].velocityY > maxPositive * 0.18)
-    .sort((a, b) => kinematics[b].velocityY - kinematics[a].velocityY);
+    .sort((a, b) => a - b);
   const firstPeak = selectedPeaks[0] ?? -1;
-  const secondPeak = selectedPeaks.find(i => firstPeak >= 0 && Math.abs(kinematics[i].time - kinematics[firstPeak].time) >= 0.12) ?? -1;
+  const secondPeak = selectedPeaks.find(i => firstPeak >= 0 && kinematics[i].time - kinematics[firstPeak].time >= 0.12) ?? -1;
   if (firstPeak >= 0) add(firstPeak, "Pico de velocidad ascendente 1 (candidato)", "Máximo local de velocidad vertical; no representa por sí solo el final de una fase.");
   if (secondPeak >= 0) {
     const lo = Math.min(firstPeak, secondPeak), hi = Math.max(firstPeak, secondPeak);
