@@ -13,9 +13,9 @@ node scripts/patch-central-stage3.mjs
 node scripts/patch-central-stage4.mjs
 node scripts/patch-central-athlete-registration.mjs
 node scripts/patch-central-coach-invitations.mjs
-node scripts/patch-central-auth-singleton.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
+node scripts/patch-central-auth-singleton.mjs
 
 # Regression checks for coach invitations: only the applicable form is visible and invite status is authoritative.
 grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
