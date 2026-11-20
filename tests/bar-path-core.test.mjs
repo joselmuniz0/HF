@@ -47,7 +47,7 @@ test("template search locates a translated visual feature", () => {
   const template = texturedPatch();
   const frame = makeNoise(width, height, 99);
   stampPatch(frame, width, 73, 57, template);
-  const result = searchTemplate(frame, width, height, template, { x: 64, y: 52 }, 24, 2);
+  const result = searchTemplate(frame, width, height, template, { x: 64, y: 52 }, 24);
   assert.ok(result);
   assert.deepEqual({ x: result.x, y: result.y }, { x: 73, y: 57 });
   assert.ok(result.score > 0.99);
