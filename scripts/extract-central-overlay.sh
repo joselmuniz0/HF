@@ -92,7 +92,7 @@ test -f .hf-central/admin/labs/bar-path/bar-path-core.mjs
 grep -q 'hf-bar-path-launch' .hf-central/admin/index.html
 grep -q 'planSessionBuilder' .hf-central/admin/index.html
 grep -q 'create_training_plan_atomic' .hf-central/admin/app.js
-grep -q 'data-plan-percent' .hf-central/admin/index.html
+grep -q 'data-plan-percent' .hf-central/admin/app.js
 grep -q 'create-coach-invitation' .hf-central/admin/app.js
 grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts
