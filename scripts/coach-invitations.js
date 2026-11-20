@@ -302,10 +302,15 @@
     try {
       var result = await invoke("manage-coach-invitations", { action: "list" });
       list.replaceChildren();
-      var items = result.invitations || [];
+      // The operational list contains only live pending invites. Revoked, accepted,
+      // expired and manually deleted rows must not look actionable or active.
+      var items = (result.invitations || []).filter(function (item) {
+        return !item.accepted_at && !item.revoked_at &&
+          new Date(item.expires_at).getTime() > Date.now();
+      });
       if (!items.length) {
         var empty = document.createElement("p");
-        empty.textContent = "Todavía no hay invitaciones registradas.";
+        empty.textContent = "No hay invitaciones pendientes.";
         list.appendChild(empty);
         return;
       }
@@ -334,9 +339,11 @@
                 invitation_id: item.id
               });
               await refreshInvitations();
-              setStatus("coachInvitationAdminStatus", "Invitación revocada.", "success");
+              setStatus("coachInvitationAdminStatus", "Invitación revocada. El enlace quedó invalidado y ya no aparece entre las activas.", "success");
             } catch (error) {
               setStatus("coachInvitationAdminStatus", error.message || String(error), "error");
+              // Refresh even on conflict: the invitation may already have been revoked or deleted.
+              await refreshInvitations();
               revoke.disabled = false;
             }
           });
