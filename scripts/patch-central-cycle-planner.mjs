@@ -69,6 +69,6 @@ fs.writeFileSync(cssPath,css,"utf8");
 fs.copyFileSync(modulePath,path.join(dir,"coach-planning.mjs"));
 fs.copyFileSync(corePath,path.join(dir,"cycle-core.mjs"));
 const verify=fs.readFileSync(appPath,"utf8");
-for(const token of ["window.HFCoachPlanning =","hf:coach-data-ready","hf:athlete-data-ready"]) if(!verify.includes(token)) throw new Error("Falta el vínculo "+token);
+for(const token of ["window.HFCoachPlanning=","hf:coach-data-ready","hf:athlete-data-ready"]) if(!verify.includes(token)) throw new Error("Falta el vínculo "+token);
 if(!html.includes('id="hfCoachCyclePlanner"')) throw new Error("No se insertó el módulo.");
 console.log("HF Central: planificador de ciclos integrado al entorno coach y portal del atleta conectado.");
