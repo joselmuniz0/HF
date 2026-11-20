@@ -16,6 +16,8 @@ node scripts/patch-central-coach-invitations.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
 node scripts/patch-central-bar-path-prototype.mjs
+node scripts/patch-central-planning-builder.mjs
+node --check scripts/patch-central-planning-builder.mjs
 
 node --check prototypes/bar-path/bar-path-core.mjs
 node --check prototypes/bar-path/bar-path-app.mjs
@@ -46,6 +48,7 @@ cp supabase/migrations/20261119140000_coach_invitations.sql .hf-central/supabase
 cp supabase/migrations/20261119154000_coach_invitation_role_guard.sql .hf-central/supabase/migrations/20261119154000_coach_invitation_role_guard.sql
 cp supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql .hf-central/supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql
 cp supabase/migrations/20261119234500_hf_video_analysis_media_link.sql .hf-central/supabase/migrations/20261119234500_hf_video_analysis_media_link.sql
+cp supabase/migrations/20261120182557_create_training_plan_atomic.sql .hf-central/supabase/migrations/20261120182557_create_training_plan_atomic.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -81,11 +84,15 @@ test -f .hf-central/supabase/migrations/20261119140000_coach_invitations.sql
 test -f .hf-central/supabase/migrations/20261119154000_coach_invitation_role_guard.sql
 test -f .hf-central/supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql
 test -f .hf-central/supabase/migrations/20261119234500_hf_video_analysis_media_link.sql
+test -f .hf-central/supabase/migrations/20261120182557_create_training_plan_atomic.sql
 test -f .hf-central/admin/coach-invitations.js
 test -f .hf-central/admin/labs/bar-path/index.html
 test -f .hf-central/admin/labs/bar-path/bar-path-app.mjs
 test -f .hf-central/admin/labs/bar-path/bar-path-core.mjs
 grep -q 'hf-bar-path-launch' .hf-central/admin/index.html
+grep -q 'planSessionBuilder' .hf-central/admin/index.html
+grep -q 'create_training_plan_atomic' .hf-central/admin/app.js
+grep -q 'data-plan-percent' .hf-central/admin/index.html
 grep -q 'create-coach-invitation' .hf-central/admin/app.js
 grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts
