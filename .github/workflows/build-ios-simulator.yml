@@ -201,6 +201,7 @@ jobs:
           DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
           BUNDLE_ID: ${{ steps.simulator.outputs.bundle_id }}
           WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPORT_BRANCH: ${{ github.head_ref || github.ref_name }}
         with:
           script: |
             const fs = require('fs');
@@ -234,7 +235,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 path,
-                ref: context.ref.replace('refs/heads/','')
+                ref: process.env.REPORT_BRANCH
               });
               sha = existing.data.sha;
             } catch (e) {
@@ -246,7 +247,7 @@ jobs:
               path,
               message: 'Record iOS simulator validation result',
               content: Buffer.from(body, 'utf8').toString('base64'),
-              branch: context.ref.replace('refs/heads/',''),
+              branch: process.env.REPORT_BRANCH,
               ...(sha ? {sha} : {})
             });
             core.summary.addHeading('HF Coach iOS Simulator');
