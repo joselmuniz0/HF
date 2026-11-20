@@ -116,4 +116,10 @@ invitations = invitations.slice(0, is) + String.raw`  async function getClient()
 ` + invitations.slice(ie);
 write('coach-invitations.js', invitations);
 
+let css = read('styles.css');
+if (!css.includes('[hidden] { display: none !important; }')) {
+  css += '\n/* Respetar el atributo hidden aunque un componente defina display:grid. */\n[hidden] { display: none !important; }\n';
+}
+write('styles.css', css);
+
 console.log('Autenticación unificada: una sola instancia Supabase, almacenamiento tolerante a restricciones de Safari y errores de login visibles.');
