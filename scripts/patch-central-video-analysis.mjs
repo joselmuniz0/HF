@@ -60,6 +60,8 @@ if(!app.includes("async function runCoachVideoAnalysis(event)")) {
     "$('evaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-evaluation-video]'); if (button) showEvaluationVideo(button); });\n"+
     "$('athleteEvaluations').addEventListener('click', function(event){ const button = event.target.closest('[data-open-athlete-evaluation-video]'); if (button) showEvaluationVideo(button); });\n"+
     "$('athletes').addEventListener('click', function(event){ const button = event.target.closest('[data-view-athlete-evaluations]'); if (!button) return; $('athleteFilter').value = button.dataset.viewAthleteEvaluations; renderEvaluations(); $('evaluations').scrollIntoView({behavior:'smooth',block:'start'}); });","eventos de videoanálisis");
+  app=app.replaceAll("Distancia barra–cadera","Separación horizontal muñeca–cadera (proxy corporal)");
+  app=app.replaceAll("metrics.bar_hip_distance_ratio","(metrics.wrist_hip_distance_ratio ?? metrics.bar_hip_distance_ratio)");
   fs.writeFileSync(appPath,app,"utf8");
 }
 let html=fs.readFileSync(htmlPath,"utf8");
@@ -67,13 +69,13 @@ if(!html.includes('id="coachVideoAnalysisDetails"')) {
   const marker='<div id="evaluations"></div>';
   const panel=[
     '<details id="coachVideoAnalysisDetails" class="hf-video-analysis">',
-    '<summary>Nuevo videoanálisis</summary>',
+    '<summary>Evaluación corporal complementaria</summary>',
     '<form id="coachVideoAnalysisForm" class="hf-video-form">',
     '<label>Atleta<select id="coachVideoAthlete" required><option value="">Seleccionar atleta…</option></select></label>',
     '<label>Levantamiento<select id="coachVideoLift"><option value="Snatch">Arranque (Snatch)</option><option value="Clean">Cargada (Clean)</option></select></label>',
     '<label>Video ya recibido<select id="coachVideoExisting"><option value="">Seleccionar video ya recibido…</option></select></label>',
     '<label>O cargar video desde este equipo<input id="coachVideoFile" type="file" accept="video/mp4,video/quicktime,video/webm"></label>',
-    '<p class="notice">Usá un intento completo de hasta 20 segundos, cámara fija, vista lateral y cuerpo completo. El análisis se realiza en el navegador con MediaPipe. El video se guarda en el almacenamiento privado de HF Coach.</p>',
+    '<p class="notice">Usá un intento completo de hasta 20 segundos, cámara fija, vista lateral y cuerpo completo. MediaPipe estima puntos corporales en el navegador. Este módulo no sigue el disco ni mide la trayectoria de la barra; para eso está el Laboratorio de trayectoria de barra. El video se guarda en el almacenamiento privado de HF Coach.</p>',
     '<div class="hf-video-actions"><button type="submit" id="coachVideoAnalyze" class="primary">Analizar video</button><button type="button" id="coachVideoSave" class="primary" hidden>Guardar análisis en la ficha</button></div>',
     '<progress id="coachVideoProgress" max="1" value="0" hidden></progress>',
     '<p id="coachVideoStatus" class="status" role="status" aria-live="polite"></p>',
