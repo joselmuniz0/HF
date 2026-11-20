@@ -77,7 +77,7 @@ const signIn = String.raw`async function signIn() {
   }
 }`;
 app = app.slice(0, start) + signIn + app.slice(end);
-const restoreSession = String.raw\`async function restoreAuthenticatedSessionOnLoad() {
+const restoreSession = String.raw`async function restoreAuthenticatedSessionOnLoad() {
   const query = new URLSearchParams(window.location.search);
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const type = hash.get('type') || query.get('type') || '';
@@ -156,10 +156,10 @@ const restoreSession = String.raw\`async function restoreAuthenticatedSessionOnL
       status.className = 'status error';
     }
   }
-}\`;
+}`;
 app = replaceOnce(app,
 "$('loginBtn').addEventListener('click', signIn);",
-restore + "\n$('loginBtn').addEventListener('click', signIn);",
+restoreSession + "\n$('loginBtn').addEventListener('click', signIn);",
 "restore session helper");
 app = replaceOnce(app,
 "setConfigInputs();\nhandleInviteLanding();",
