@@ -6,7 +6,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store, max-age=0" },
 });
 
 Deno.serve(async (req) => {
@@ -40,9 +40,14 @@ Deno.serve(async (req) => {
       if (membershipError) throw membershipError;
       const organizationIds = Array.from(new Set((memberships || []).map((m: any) => m.organization_id)));
       if (organizationIds.length === 0) return json({ ok: true, invitations: [] });
+      // This endpoint is the operational queue: never return revoked, accepted or expired links.
+      // Historical rows remain in coach_invitations for audit and are not exposed as active invitations.
       const { data, error } = await adminClient.from("coach_invitations")
         .select("id, organization_id, email, display_name, created_at, expires_at, accepted_at, revoked_at")
         .in("organization_id", organizationIds)
+        .is("accepted_at", null)
+        .is("revoked_at", null)
+        .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
