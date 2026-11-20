@@ -79,7 +79,7 @@ function scoreTemplateAt(stats, gray, width, cx, cy) {
   return denominator > 1e-8 ? numerator / denominator : -1;
 }
 
-export function searchTemplate(gray, width, height, template, origin, searchRadius = 32, step = 2) {
+export function searchTemplate(gray, width, height, template, origin, searchRadius = 32) {
   if (!template || !origin) return null;
   const r = template.radius, stats = prepareTemplateStats(template);
   const minX = Math.max(r, Math.floor(origin.x - searchRadius));
@@ -87,20 +87,12 @@ export function searchTemplate(gray, width, height, template, origin, searchRadi
   const minY = Math.max(r, Math.floor(origin.y - searchRadius));
   const maxY = Math.min(height - r - 1, Math.ceil(origin.y + searchRadius));
   let best = { x: null, y: null, score: -1 };
-  const evaluate = (x, y) => {
-    if (x < r || y < r || x >= width - r || y >= height - r) return;
-    const score = scoreTemplateAt(stats, gray, width, x, y);
-    if (score > best.score) best = { x, y, score };
-  };
-  for (let y = minY; y <= maxY; y += step) {
-    for (let x = minX; x <= maxX; x += step) evaluate(x, y);
-  }
-  if (best.x !== null && step > 1) {
-    const coarse = best;
-    const refineRadius = step + 1;
-    best = { x: null, y: null, score: -1 };
-    for (let y = Math.max(r, coarse.y - refineRadius); y <= Math.min(height - r - 1, coarse.y + refineRadius); y++) {
-      for (let x = Math.max(r, coarse.x - refineRadius); x <= Math.min(width - r - 1, coarse.x + refineRadius); x++) evaluate(x, y);
+  // Evaluate each pixel in the local search window. A coarse grid can miss
+  // an odd-pixel displacement and choose a false match before refinement.
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const score = scoreTemplateAt(stats, gray, width, x, y);
+      if (score > best.score) best = { x, y, score };
     }
   }
   return best.x === null ? null : best;
@@ -132,7 +124,7 @@ export function trackNextFrame({
       y: previous.y + (previous.y - previousPrevious.y) * ratio
     };
   }
-  const match = searchTemplate(gray, width, height, template, predicted, searchRadius, 2);
+  const match = searchTemplate(gray, width, height, template, predicted, searchRadius);
   if (!match || match.score < minCorrelation ||
       Math.hypot(match.x - predicted.x, match.y - predicted.y) > searchRadius * 1.35) {
     return { x: null, y: null, score: match?.score ?? null, status: "lost", source: "none" };
