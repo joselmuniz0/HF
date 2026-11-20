@@ -44,7 +44,7 @@ html=html.slice(0,start)+panel+html.slice(end);
 if(!html.includes('src="./coach-planning.mjs"')) html=replaceOnce(html,'  <script type="module" src="./app.js"></script>','  <script type="module" src="./app.js"></script>\n  <script type="module" src="./coach-planning.mjs"></script>',"la carga del módulo");
 fs.writeFileSync(htmlPath,html,"utf8");
 let app=fs.readFileSync(appPath,"utf8");
-if(!app.includes("window.HFCoachPlanning =")){
+if(!app.includes("window.HFCoachPlanning=")){
   let a=app.indexOf("async function loadData()"), b=app.indexOf("\nfunction render()",a);
   if(a<0||b<0)throw new Error("No se encontró loadData().");
   let chunk=replaceOnce(app.slice(a,b),"    render();",'    render();\n    window.dispatchEvent(new Event("hf:coach-data-ready"));',"evento de refresco del coach");
