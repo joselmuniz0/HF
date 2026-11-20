@@ -23,7 +23,7 @@ app = replaceOnce(app,
 const start = app.indexOf('async function signIn() {');
 const end = app.indexOf('\nasync function loadData() {', start);
 if (start < 0 || end < 0) throw new Error('No se encontró el bloque signIn completo.');
-const signIn = String.raw\`async function signIn() {
+const signIn = String.raw`async function signIn() {
   const loginStatus = $('loginStatus');
   const loginButton = $('loginBtn');
   if (loginStatus) {
@@ -75,7 +75,7 @@ const signIn = String.raw\`async function signIn() {
   } finally {
     if (loginButton) loginButton.disabled = false;
   }
-}\`;
+}`;
 app = app.slice(0, start) + signIn + app.slice(end);
 write('app.js', app);
 
@@ -91,14 +91,14 @@ recovery = replaceOnce(recovery, '  let recoveryClientPromise = null;\n', '', 'r
 const rs = recovery.indexOf('  async function getRecoveryClient() {');
 const re = recovery.indexOf('\n  async function sendRecoveryRequest(button) {', rs);
 if (rs < 0 || re < 0) throw new Error('No se encontró getRecoveryClient.');
-recovery = recovery.slice(0, rs) + String.raw\`  async function getRecoveryClient() {
+recovery = recovery.slice(0, rs) + String.raw`  async function getRecoveryClient() {
     const getClient = window.HF_GET_SUPABASE_CLIENT;
     if (typeof getClient !== 'function') {
       throw new Error('El módulo de autenticación de HF Coach no está listo. Recargá la página e intentá nuevamente.');
     }
     return getClient();
   }
-\` + recovery.slice(re);
+` + recovery.slice(re);
 write('recovery.js', recovery);
 
 let invitations = read('coach-invitations.js');
@@ -106,14 +106,14 @@ invitations = replaceOnce(invitations, '  var clientPromise = null;\n', '', 'inv
 const is = invitations.indexOf('  async function getClient() {');
 const ie = invitations.indexOf('\n  async function invoke(name, body) {', is);
 if (is < 0 || ie < 0) throw new Error('No se encontró getClient de invitaciones.');
-invitations = invitations.slice(0, is) + String.raw\`  async function getClient() {
+invitations = invitations.slice(0, is) + String.raw`  async function getClient() {
     var getSharedClient = window.HF_GET_SUPABASE_CLIENT;
     if (typeof getSharedClient !== "function") {
       throw new Error("El módulo de autenticación de HF Coach no está listo. Recargá la página e intentá nuevamente.");
     }
     return getSharedClient();
   }
-\` + invitations.slice(ie);
+` + invitations.slice(ie);
 write('coach-invitations.js', invitations);
 
 console.log('Autenticación unificada: una sola instancia Supabase, almacenamiento tolerante a restricciones de Safari y errores de login visibles.');
