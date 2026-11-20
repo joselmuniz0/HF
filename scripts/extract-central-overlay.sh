@@ -89,5 +89,6 @@ grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/app.js
 grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/recovery.js
 grep -q 'HF_GET_SUPABASE_CLIENT' .hf-central/admin/coach-invitations.js
 grep -q 'id="loginStatus"' .hf-central/admin/index.html
+grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
 
 echo "HF Central overlay extracted, Stage 2 activation patch applied, and updated setup files generated."
