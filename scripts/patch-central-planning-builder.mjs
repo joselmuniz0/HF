@@ -81,7 +81,7 @@ const plannerCode = [
   "      if (label) label.textContent = 'Ejercicio ' + (exerciseIndex + 1);",
   "    });",
   "    const count = session.querySelectorAll('[data-plan-exercise]').length;",
-  "    '  <span class=\"plan-session-count\" data-plan-session-count>0 ejercicios</span>',",
+    "    '  <span class=\"plan-session-count\" data-plan-session-count>0 ejercicios</span>',",
   "    if (countNode) countNode.textContent = count + (count === 1 ? ' ejercicio' : ' ejercicios');",
   "  });",
   "}",
