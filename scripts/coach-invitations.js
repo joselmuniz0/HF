@@ -65,7 +65,11 @@
     return params.get("coach_invite") || "";
   }
   function clearTokenFromAddress() {
-    history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    var params = new URLSearchParams(window.location.search);
+    if (params.get("flow") === "invite") params.delete("flow");
+    var query = params.toString();
+    history.replaceState({}, document.title,
+      window.location.pathname + (query ? "?" + query : ""));
   }
 
   async function acceptExisting(token, email, password) {
@@ -95,11 +99,20 @@
       throw new Error("No se pudo actualizar la contraseña ni confirmar la invitación.");
     }
     var client = await getClient();
-    var current = await client.auth.getSession();
-    if (current.data && current.data.session) await client.auth.signOut();
-    var signed = await client.auth.signInWithPassword({ email: email, password: password });
-    if (signed.error) throw signed.error;
-    completeAcceptance();
+    try {
+      var current = await client.auth.getSession();
+      if (current.data && current.data.session) {
+        var signedOut = await client.auth.signOut();
+        if (signedOut.error) throw signedOut.error;
+      }
+      var signed = await client.auth.signInWithPassword({ email: email, password: password });
+      if (signed.error) throw signed.error;
+      completeAcceptance();
+    } catch (error) {
+      // The server has already updated the password and accepted the invitation.
+      // Never strand the coach on a now-consumed invitation if automatic login fails.
+      showLoginAfterAcceptedInvitation(email, error);
+    }
   }
   async function acceptNew(token, email, password, confirmation) {
     if (password.length < 12 || password.length > 128) {
@@ -114,11 +127,38 @@
     });
     if (!result.ok) throw new Error("No se pudo confirmar la invitación.");
     var client = await getClient();
-    var current = await client.auth.getSession();
-    if (current.data && current.data.session) await client.auth.signOut();
-    var signed = await client.auth.signInWithPassword({ email: email, password: password });
-    if (signed.error) throw signed.error;
-    completeAcceptance();
+    try {
+      var current = await client.auth.getSession();
+      if (current.data && current.data.session) {
+        var signedOut = await client.auth.signOut();
+        if (signedOut.error) throw signedOut.error;
+      }
+      var signed = await client.auth.signInWithPassword({ email: email, password: password });
+      if (signed.error) throw signed.error;
+      completeAcceptance();
+    } catch (error) {
+      showLoginAfterAcceptedInvitation(email, error);
+    }
+  }
+  function showLoginAfterAcceptedInvitation(email, error) {
+    clearTokenFromAddress();
+    document.body.classList.remove("hf-coach-invite-active");
+    setVisible("coachInviteLanding", false);
+    setVisible("loginPanel", true);
+    setVisible("dashboard", false);
+    var emailInput = byId("email");
+    var passwordInput = byId("password");
+    if (emailInput) emailInput.value = email || "";
+    if (passwordInput) passwordInput.value = "";
+    var status = byId("loginStatus");
+    if (status) {
+      status.hidden = false;
+      status.className = "status error";
+      status.textContent =
+        "La invitación fue aceptada y la contraseña quedó actualizada. " +
+        "No se pudo abrir la sesión automáticamente. Ingresá con este correo y la contraseña nueva." +
+        (error && error.message ? " Detalle: " + error.message : "");
+    }
   }
   function completeAcceptance() {
     clearTokenFromAddress();
@@ -262,10 +302,15 @@
     try {
       var result = await invoke("manage-coach-invitations", { action: "list" });
       list.replaceChildren();
-      var items = result.invitations || [];
+      // The operational list contains only live pending invites. Revoked, accepted,
+      // expired and manually deleted rows must not look actionable or active.
+      var items = (result.invitations || []).filter(function (item) {
+        return !item.accepted_at && !item.revoked_at &&
+          new Date(item.expires_at).getTime() > Date.now();
+      });
       if (!items.length) {
         var empty = document.createElement("p");
-        empty.textContent = "Todavía no hay invitaciones registradas.";
+        empty.textContent = "No hay invitaciones pendientes.";
         list.appendChild(empty);
         return;
       }
@@ -294,9 +339,11 @@
                 invitation_id: item.id
               });
               await refreshInvitations();
-              setStatus("coachInvitationAdminStatus", "Invitación revocada.", "success");
+              setStatus("coachInvitationAdminStatus", "Invitación revocada. El enlace quedó invalidado y ya no aparece entre las activas.", "success");
             } catch (error) {
               setStatus("coachInvitationAdminStatus", error.message || String(error), "error");
+              // Refresh even on conflict: the invitation may already have been revoked or deleted.
+              await refreshInvitations();
               revoke.disabled = false;
             }
           });
