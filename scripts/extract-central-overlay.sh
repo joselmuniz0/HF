@@ -55,6 +55,7 @@ cp supabase/migrations/20261119220000_hf_coach_rbac_consolidated.sql .hf-central
 cp supabase/migrations/20261119234500_hf_video_analysis_media_link.sql .hf-central/supabase/migrations/20261119234500_hf_video_analysis_media_link.sql
 cp supabase/migrations/20261120182557_create_training_plan_atomic.sql .hf-central/supabase/migrations/20261120182557_create_training_plan_atomic.sql
 cp supabase/migrations/20261121120000_structured_training_cycles.sql .hf-central/supabase/migrations/20261121120000_structured_training_cycles.sql
+cp supabase/migrations/20261121130000_athlete_plan_notifications.sql .hf-central/supabase/migrations/20261121130000_athlete_plan_notifications.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -92,6 +93,7 @@ test -f .hf-central/supabase/migrations/20261119220000_hf_coach_rbac_consolidate
 test -f .hf-central/supabase/migrations/20261119234500_hf_video_analysis_media_link.sql
 test -f .hf-central/supabase/migrations/20261120182557_create_training_plan_atomic.sql
 test -f .hf-central/supabase/migrations/20261121120000_structured_training_cycles.sql
+test -f .hf-central/supabase/migrations/20261121130000_athlete_plan_notifications.sql
 test -f .hf-central/admin/coach-planning.mjs
 test -f .hf-central/admin/cycle-core.mjs
 test -f .hf-central/admin/coach-invitations.js
