@@ -15,6 +15,12 @@ node scripts/patch-central-athlete-registration.mjs
 node scripts/patch-central-coach-invitations.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
+
+# Regression checks for coach invitations: only the applicable form is visible and invite status is authoritative.
+grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
+grep -q "canonicalInviteHost = 'hf-coach-central.vercel.app'" .hf-central/admin/app.js
+grep -q "function showLoginAfterAcceptedInvitation" .hf-central/admin/coach-invitations.js
+grep -q "No hay invitaciones pendientes." .hf-central/admin/coach-invitations.js
 node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
