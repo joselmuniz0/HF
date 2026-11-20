@@ -126,7 +126,7 @@ function createBlock(block) {
   const values = block || {};
   row.querySelector("[data-cp-sets]").value = values.sets == null ? 1 : values.sets;
   row.querySelector("[data-cp-reps]").value = values.reps || "1";
-  row.querySelector("[data-cp-intensity-type]").value = values.intensity_type || "percent";
+  row.querySelector("[data-cp-intensity-type]").value = values.intensity_type || "none";
   row.querySelector("[data-cp-intensity-value]").value = values.intensity_value == null ? "" : values.intensity_value;
   row.querySelector("[data-cp-reference-name]").value = values.reference_exercise || "";
   row.querySelector("[data-cp-reference-kg]").value = values.reference_load_kg == null ? "" : values.reference_load_kg;
@@ -492,7 +492,7 @@ function renderPlanList(weekRows) {
   const rows = currentPlans.map(plan => {
     const athlete = athletes.find(a => a.id === plan.athlete_id);
     const weeks = weekRows.filter(w => w.plan_id === plan.id).sort((a,b) => a.week_number-b.week_number);
-    const published = plan.status === "active" && plan.published_at;
+    const published = plan.status === "active";
     return '<article class="cp-plan-card">' +
       '<div class="cp-plan-main"><div><h4>' + esc(plan.name) + '</h4><div class="cp-plan-meta">' +
       esc(athlete?.full_name || "Atleta") + ' · ' + esc(phaseLabel(plan.training_phase)) + ' · ' +
