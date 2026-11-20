@@ -77,6 +77,94 @@ const signIn = String.raw`async function signIn() {
   }
 }`;
 app = app.slice(0, start) + signIn + app.slice(end);
+const restoreSession = String.raw\`async function restoreAuthenticatedSessionOnLoad() {
+  const query = new URLSearchParams(window.location.search);
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const type = hash.get('type') || query.get('type') || '';
+  // No interferir con los callbacks de invitación ni con la recuperación de contraseña.
+  if (hash.has('coach_invite') || query.get('flow') === 'invite' ||
+      query.has('code') || hash.has('code') ||
+      ['invite', 'magiclink', 'recovery'].includes(type)) return;
+
+  try {
+    const sb = getClient();
+    const { data, error } = await sb.auth.getSession();
+    if (error) throw error;
+    const user = data.session && data.session.user;
+    if (!user) return;
+
+    currentUserId = user.id;
+    const { data: memberships, error: memberError } = await sb
+      .from('organization_memberships')
+      .select('organization_id,role')
+      .eq('user_id', user.id)
+      .in('role', ['admin', 'coach']);
+    if (memberError) throw memberError;
+
+    $('loginPanel').hidden = true;
+    $('dashboard').hidden = true;
+    $('athleteDashboard').hidden = true;
+    $('athleteAccessPanel').hidden = true;
+
+    if (memberships && memberships.length) {
+      currentRole = memberships.some(item => item.role === 'admin') ? 'admin' : 'coach';
+      const membership = memberships.find(item => item.role === currentRole) || memberships[0];
+      organizationId = membership.organization_id;
+      const { data: org, error: orgError } = await sb
+        .from('organizations')
+        .select('name')
+        .eq('id', organizationId)
+        .maybeSingle();
+      if (orgError) throw orgError;
+      organizationName = org && org.name ? org.name : 'HF Coach';
+      $('sessionLabel').textContent = user.email + ' · ' + currentRole;
+      $('dashboard').hidden = false;
+      $('orgLabel').textContent = organizationName + ' · ' + user.email + ' · ' + currentRole;
+      await loadData();
+      applyRoleBasedInterface();
+      return;
+    }
+
+    const { data: links, error: linkError } = await sb
+      .from('athlete_accounts')
+      .select('organization_id,athlete_id,account_status')
+      .eq('user_id', user.id)
+      .eq('account_status', 'active')
+      .limit(1);
+    if (linkError) throw linkError;
+    if (links && links.length) {
+      athleteAccount = links[0];
+      organizationId = athleteAccount.organization_id;
+      currentRole = 'athlete';
+      $('sessionLabel').textContent = user.email + ' · atleta';
+      $('athleteDashboard').hidden = false;
+      await loadAthletePortal();
+      return;
+    }
+
+    currentRole = 'unlinked';
+    $('sessionLabel').textContent = user.email + ' · sin vinculación';
+    $('athleteAccessPanel').hidden = false;
+    $('accessFullName').value = user.user_metadata && user.user_metadata.full_name || '';
+    await loadOwnRequests();
+  } catch (error) {
+    console.warn('HF Coach: no se pudo restaurar la sesión guardada.', error);
+    const status = $('loginStatus');
+    if (status) {
+      status.hidden = false;
+      status.textContent = 'No se pudo restaurar la sesión: ' + (error.message || String(error)) + '. Ingresá nuevamente.';
+      status.className = 'status error';
+    }
+  }
+}\`;
+app = replaceOnce(app,
+"$('loginBtn').addEventListener('click', signIn);",
+restore + "\n$('loginBtn').addEventListener('click', signIn);",
+"restore session helper");
+app = replaceOnce(app,
+"setConfigInputs();\nhandleInviteLanding();",
+"setConfigInputs();\nhandleInviteLanding();\nrestoreAuthenticatedSessionOnLoad();",
+"restore session startup");
 write('app.js', app);
 
 let html = read('index.html');
