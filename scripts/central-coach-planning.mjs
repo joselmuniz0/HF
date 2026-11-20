@@ -556,7 +556,7 @@ async function publishPlan(planId) {
   const plan = currentPlans.find(p => p.id === planId);
   if (!plan) return;
   const athlete = (context().getAthletes() || []).find(a => a.id === plan.athlete_id);
-  if (!window.confirm("Publicar "" + plan.name + "" para " + (athlete?.full_name || "el atleta") + "? El plan pasará a estar visible en su portal de HF Coach.")) return;
+  if (!window.confirm('Publicar "' + plan.name + '" para ' + (athlete?.full_name || "el atleta") + '? El plan pasará a estar visible en su portal de HF Coach.')) return;
   try {
     const result = await client().rpc("publish_training_plan", { p_plan_id:planId });
     if (result.error) throw result.error;
