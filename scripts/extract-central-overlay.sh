@@ -27,6 +27,8 @@ node --check prototypes/bar-path/bar-path-core.mjs
 node --check prototypes/bar-path/bar-path-app.mjs
 node --test tests/bar-path-core.test.mjs
 node --test tests/training-cycle-core.test.mjs
+node --check api/coach-ai-planning.js
+node --test tests/coach-ai-planning.test.cjs
 
 # Regression checks for coach invitations: only the applicable form is visible and invite status is authoritative.
 grep -qF '[hidden] { display: none !important; }' .hf-central/admin/styles.css
@@ -123,5 +125,9 @@ grep -q 'admins create athletes for coaches' .hf-central/supabase/migrations/202
 grep -q 'athleteRegistrationForm' .hf-central/admin/index.html
 grep -q 'recovery.js' .hf-central/admin/index.html
 grep -q 'passwordRecoveryRequestBtn' .hf-central/admin/recovery.js
+
+grep -q 'cpGenerateWithAI' .hf-central/admin/coach-planning.mjs
+grep -q 'cpAiReview' .hf-central/admin/index.html
+test -f api/coach-ai-planning.js
 
 echo "HF Central overlay extracted, Stage 2 activation patch applied, and updated setup files generated."
