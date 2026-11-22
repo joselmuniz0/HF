@@ -714,6 +714,81 @@ async function generatePlanWithAI() {
   }
 }
 
+function importWeeklyPlanFromChat() {
+  const athleteId = $("cpAthlete").value;
+  if (!athleteId) throw new Error("Seleccioná primero el atleta al que corresponde la planificación.");
+  const raw = $("cpImportChatJson").value.trim();
+  if (!raw) throw new Error("Pegá el bloque JSON de la planificación semanal.");
+  let cleaned = raw;
+  if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
+  else if (cleaned.startsWith("```")) cleaned = cleaned.slice(3);
+  if (cleaned.trim().endsWith("```")) cleaned = cleaned.trim().slice(0, -3);
+  const first = cleaned.indexOf("{");
+  const last = cleaned.lastIndexOf("}");
+  if (first < 0 || last <= first) throw new Error("No se encontró un objeto JSON.");
+  let parsed;
+  try { parsed = JSON.parse(cleaned.slice(first, last + 1)); }
+  catch (error) { throw new Error("El bloque no es un JSON válido: " + error.message); }
+  const plan = parsed.plan && typeof parsed.plan === "object" ? parsed.plan : parsed;
+  const review = parsed.review && typeof parsed.review === "object" ? parsed.review : {
+    summary: "Planificación semanal importada desde el asistente de HF. Requiere revisión del coach.",
+    data_used: ["Plan semanal generado en el chat"],
+    data_gaps: ["Verificar que las cargas correspondan a las marcas actuales del atleta seleccionado."],
+    coach_checks: ["Confirmar atleta, RM de referencia, intensidades y volumen antes de guardar."],
+    risk_flags: []
+  };
+  if (!Array.isArray(plan.weeks) || plan.weeks.length !== 1 || !Array.isArray(plan.sessions) || !plan.sessions.length) throw new Error("La planificación debe contener una semana y una lista de sesiones estructuradas.");
+  const days = plan.sessions.map(session => Number(session.day_number));
+  if (days.some(day => !Number.isInteger(day) || day < 1 || day > 7) || new Set(days).size !== days.length) throw new Error("Cada sesión debe tener un day_number único entre 1 y 7.");
+  for (const session of plan.sessions) {
+    if (!Array.isArray(session.exercises) || !session.exercises.length) throw new Error("Cada sesión debe contener al menos un ejercicio.");
+    for (const exercise of session.exercises) {
+      if (!String(exercise.exercise_name || "").trim() || !Array.isArray(exercise.blocks) || !exercise.blocks.length) throw new Error("Cada ejercicio debe incluir su nombre y al menos un bloque de prescripción.");
+      for (const block of exercise.blocks) {
+        if (!Number.isInteger(Number(block.sets)) || Number(block.sets) < 1 || !String(block.reps || "").trim()) throw new Error("Cada bloque debe tener series y repeticiones.");
+        if (!["percent", "kg", "rpe", "none"].includes(block.intensity_type)) throw new Error("Cada bloque debe indicar su tipo de intensidad.");
+      }
+    }
+  }
+  const phase = $("cpPhase").value;
+  const period = phase === "competition" ? "competitivo" : phase === "transition" ? "transicion" : "preparatorio";
+  const week = Object.assign({}, plan.weeks[0], {
+    week_number: 1,
+    period: ["preparatorio", "competitivo", "transicion"].includes(plan.weeks[0].period) ? plan.weeks[0].period : period,
+    athlete_level: optionalNumber($("cpAthleteLevel").value)
+  });
+  if (Number.isInteger(week.oly_repetitions) && Number.isInteger(week.strength_repetitions)) week.total_repetitions = week.oly_repetitions + week.strength_repetitions;
+  const dayNames = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+  const sessions = [...plan.sessions].sort((a, b) => Number(a.day_number) - Number(b.day_number)).map(session => Object.assign({}, session, {
+    week_number: 1,
+    session_order: 1,
+    session_reference: session.session_reference || dayNames[Number(session.day_number) - 1]
+  }));
+  const startInput = $("cpCycleStart").value || nextMondayISO();
+  const mondayDate = new Date(startInput + "T12:00:00");
+  if (!Number.isFinite(mondayDate.getTime())) throw new Error("La fecha de inicio no es válida.");
+  mondayDate.setDate(mondayDate.getDate() + (8 - mondayDate.getDay()) % 7);
+  const monday = mondayDate.getFullYear() + "-" + String(mondayDate.getMonth() + 1).padStart(2, "0") + "-" + String(mondayDate.getDate()).padStart(2, "0");
+  $("cpCycleStart").value = monday;
+  for (const session of sessions) {
+    const date = new Date(monday + "T12:00:00");
+    date.setDate(date.getDate() + Number(session.day_number) - 1);
+    session.scheduled_date = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  }
+  const lastDate = sessions.reduce((latest, session) => session.scheduled_date > latest ? session.scheduled_date : latest, monday);
+  $("cpCycleEnd").value = lastDate;
+  $("cpCycleName").value = $("cpCycleName").value.trim() || String(plan.name || "Planificación semanal importada");
+  $("cpCycleObjective").value = $("cpCycleObjective").value.trim() || String(plan.objective || "");
+  const coachNotes = $("cpCycleNotes").value.trim();
+  const importedNotes = String(plan.notes || "").trim();
+  $("cpCycleNotes").value = [coachNotes, importedNotes].filter((value, index, values) => value && values.indexOf(value) === index).join("\n\n");
+  applyStructure({ weeks: [week], sessions: sessions });
+  aiGeneratedAthleteId = athleteId;
+  setAiReview(review, { data_quality: { records_pending_or_unvalidated: 0 } });
+  showEditor();
+  setStatus("Planificación semanal importada al editor. Confirmá que pertenece al atleta seleccionado y revisá todas las cargas antes de guardar el borrador.", "success");
+}
+
 async function saveDraft(event) {
   event.preventDefault();
   const button = $("cpSaveDraft");
@@ -875,6 +950,17 @@ function bind() {
   });
   $("cpAthlete").addEventListener("change", setOptionsFromAthlete);
   $("cpGenerateWithAI").addEventListener("click", () => generatePlanWithAI().catch(error => setStatus(error.message || error, "error")));
+  $("cpAthlete").addEventListener("change", () => {
+    setOptionsFromAthlete();
+    if (aiGeneratedAthleteId && $("cpAthlete").value !== aiGeneratedAthleteId) {
+      const selectedAthleteId = $("cpAthlete").value;
+      clearEditor();
+      $("cpAthlete").value = selectedAthleteId;
+      setOptionsFromAthlete();
+      setStatus("La propuesta anterior se retiró para evitar asignarla a otro atleta. Generá o importá una nueva planificación.", "error");
+    }
+  });
+  $("cpImportWeeklyPlan").addEventListener("click", () => { try { importWeeklyPlanFromChat(); } catch (error) { setStatus(error.message || error, "error"); } });
   $("cpCycleForm").addEventListener("submit", saveDraft);
   $("cpLoadTemplate").addEventListener("click", () => {
     try { useSelectedTemplate(); } catch (error) { setStatus(error.message || error, "error"); }
