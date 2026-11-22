@@ -7,6 +7,7 @@ let currentTemplates = [];
 let currentPlans = [];
 let planDetailCache = new Map();
 let loading = false;
+let aiGeneratedAthleteId = null;
 
 const esc = value => String(value == null ? "" : value).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
 const periodLabel = value => ({ preparatorio:"Preparatorio", competitivo:"Competitivo", transicion:"Transición" }[value] || value || "—");
@@ -281,6 +282,10 @@ function addWeek(week) {
 function clearEditor() {
   $("cpCycleForm").reset();
   $("cpWeekBuilder").innerHTML = "";
+  aiGeneratedAthleteId = null;
+  $("cpAiReview").hidden = true;
+  $("cpAiReview").innerHTML = "";
+  $("cpImportChatJson").value = "";
   $("cpAthleteLevel").value = 5;
   $("cpPhase").value = "general_preparation";
   $("cpCycleName").value = "";
@@ -689,14 +694,17 @@ async function generatePlanWithAI() {
     const plan = payload.plan;
     if (!plan || !Array.isArray(plan.weeks) || !Array.isArray(plan.sessions)) throw new Error("La propuesta recibida no tiene una estructura válida.");
     $("cpCycleName").value = $("cpCycleName").value.trim() || plan.name || "Planificación semanal asistida por IA";
-    $("cpCycleObjective").value = plan.objective || $("cpCycleObjective").value;
-    $("cpCycleNotes").value = plan.notes || $("cpCycleNotes").value;
+    $("cpCycleObjective").value = $("cpCycleObjective").value.trim() || plan.objective || "";
+    const coachNotes = $("cpCycleNotes").value.trim();
+    const aiNotes = String(plan.notes || "").trim();
+    $("cpCycleNotes").value = [coachNotes, aiNotes].filter((value, index, values) => value && values.indexOf(value) === index).join("\n\n");
     applyStructure({
       weeks: plan.weeks,
       sessions: plan.sessions.map(session => Object.assign({}, session, {
         scheduled_date: session.scheduled_date || null
       }))
     });
+    aiGeneratedAthleteId = athleteId;
     setAiReview(payload.review || {}, payload.meta || {});
     showEditor();
     setStatus("Propuesta semanal generada. Revisá ejercicios, volúmenes, intensidades y alertas; después guardala como borrador.", "success");
@@ -725,6 +733,7 @@ async function saveDraft(event) {
       p_sessions:cycle.sessions
     });
     if (result.error) throw result.error;
+    aiGeneratedAthleteId = null;
     setStatus("Borrador guardado. Revisá el detalle y publicalo cuando esté listo para el atleta.", "success");
     showLibrary();
     await loadPlans();
