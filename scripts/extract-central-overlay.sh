@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -x
 
 mkdir -p .hf-central
 cat .central-source/*.b64 | base64 --decode > .hf-central/HF-Central-Overlay.zip
