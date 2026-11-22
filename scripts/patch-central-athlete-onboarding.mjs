@@ -39,7 +39,7 @@ const coachSelectNew = `  if ($("newAthleteCoach")) {
   }`;
 if (app.includes(coachSelectOld)) app = app.replace(coachSelectOld, coachSelectNew);
 
-const requestsStart = app.indexOf("  const requestRows = (data.accessRequests || []).filter(function(r){ return r.status === \\"pending\\"; });");
+const requestsStart = app.indexOf("  const requestRows = (data.accessRequests || []).filter(function(r){ return r.status ===");
 const plansStart = app.indexOf('  $("plansList").innerHTML', requestsStart);
 if (requestsStart < 0 || plansStart < 0) throw new Error("No se encontró el listado de solicitudes de atletas.");
 const requestsBlock = `  const requestRows = (data.accessRequests || []).filter(function(r){ return r.status === "pending"; });
