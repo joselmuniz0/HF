@@ -1,6 +1,6 @@
 const SUPABASE_URL = (process.env.HF_SUPABASE_URL || "").replace(/\/+$/, "");
 const SUPABASE_KEY = process.env.HF_SUPABASE_PUBLISHABLE_KEY || "";
-const AI_MODEL = "openai/gpt-6-astra";
+const AI_MODEL = "openai/gpt-6.2-sol";
 
 const DAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store, max-age=0" };
@@ -206,9 +206,12 @@ function validateGeneratedPlan(output, input, data) {
             block.manual_load_kg = null;
             coachChecks.add("La carga en kg de " + exercise.exercise_name + " quedó expresada en RPE: no existen registros históricos comparables.");
           } else if (proposed != null && Number.isFinite(proposed) && proposed > maxObserved * 1.05) {
+            block.intensity_type = "rpe";
+            block.target_rpe = block.target_rpe == null ? 6 : Number(block.target_rpe);
+            block.intensity_value = block.target_rpe;
             block.target_load_kg = null;
             block.manual_load_kg = null;
-            coachChecks.add("Revisar la carga propuesta para " + exercise.exercise_name + ": supera en más de 5% el mayor registro reciente comparable.");
+            coachChecks.add("La carga propuesta para " + exercise.exercise_name + " se dejó en RPE: supera en más de 5% el mayor registro reciente comparable.");
           } else {
             block.intensity_value = proposed;
             block.target_load_kg = proposed;
@@ -269,7 +272,8 @@ async function handler(req, res) {
     if (origin && host && new URL(origin).host !== host) return send(res, 403, { error: "Origen no autorizado." });
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
-    return send(res, 204, {});
+    res.statusCode = 204;
+    return res.end();
   }
   if (req.method !== "POST") return send(res, 405, { error: "Método no permitido." });
   if (!SUPABASE_URL || !SUPABASE_KEY) return send(res, 503, { error: "Falta configurar Supabase en el entorno de HF Coach." });
