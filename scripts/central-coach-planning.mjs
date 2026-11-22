@@ -285,7 +285,7 @@ function clearEditor() {
   $("cpPhase").value = "general_preparation";
   $("cpCycleName").value = "";
   $("cpCycleObjective").value = "";
-  $("cpCycleStart").value = new Date().toISOString().slice(0,10);
+  $("cpCycleStart").value = nextMondayISO();
   $("cpCycleEnd").value = "";
   $("cpCycleNotes").value = "";
   addWeek({ week_number:1, period:"preparatorio", athlete_level:5 });
@@ -614,6 +614,98 @@ function onBuilderClick(event) {
     refreshSessionLabels(button.closest("[data-cp-week]"));
   }
 }
+
+function nextMondayISO() {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  const daysAhead = (8 - date.getDay()) % 7;
+  date.setDate(date.getDate() + daysAhead);
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+function setAiReview(review, meta) {
+  const panel = $("cpAiReview");
+  if (!panel) return;
+  const parts = [
+    '<h4>Revisión del Coach IA · requiere aprobación humana</h4>',
+    '<p>' + esc(review.summary || "Propuesta generada a partir de los datos disponibles.") + '</p>',
+    '<div class="cp-ai-review-grid">',
+    '<div><b>Datos utilizados</b><ul>' + (review.data_used || []).map(item => '<li>' + esc(item) + '</li>').join("") + '</ul></div>',
+    '<div><b>Datos faltantes</b><ul>' + (review.data_gaps || []).map(item => '<li>' + esc(item) + '</li>').join("") + (meta?.data_quality?.records_pending_or_unvalidated ? '<li>' + esc(meta.data_quality.records_pending_or_unvalidated + " registros de marcas pendientes o no validadas; no se usaron como RM.") + '</li>' : '') + '</ul></div>',
+    '<div><b>Verificaciones del coach</b><ul>' + (review.coach_checks || []).map(item => '<li>' + esc(item) + '</li>').join("") + '</ul></div>',
+    '<div><b>Alertas</b><ul>' + (review.risk_flags || []).map(item => '<li>' + esc(item) + '</li>').join("") + '</ul></div>',
+    '</div>',
+    '<small>El plan sigue siendo un borrador local hasta que el coach lo guarde. La IA no lo publica ni cambia cargas después de esta propuesta.</small>'
+  ];
+  panel.innerHTML = parts.join("");
+  panel.hidden = false;
+}
+async function generatePlanWithAI() {
+  const button = $("cpGenerateWithAI");
+  const athleteId = $("cpAthlete").value;
+  const startInput = $("cpCycleStart").value;
+  const days = Array.from(root.querySelectorAll("[data-cp-ai-day]:checked")).map(input => Number(input.value)).sort((a,b) => a-b);
+  if (!athleteId) { setStatus("Seleccioná primero un atleta.", "error"); return; }
+  if (!days.length) { setStatus("Seleccioná al menos un día de entrenamiento.", "error"); return; }
+  let monday = startInput;
+  if (!monday) monday = nextMondayISO();
+  const date = new Date(monday + "T12:00:00");
+  if (!Number.isFinite(date.getTime())) { setStatus("La fecha de inicio no es válida.", "error"); return; }
+  const daysAhead = (8 - date.getDay()) % 7;
+  date.setDate(date.getDate() + daysAhead);
+  monday = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  $("cpCycleStart").value = monday;
+  const lastDate = new Date(monday + "T12:00:00");
+  lastDate.setDate(lastDate.getDate() + days[days.length - 1] - 1);
+  $("cpCycleEnd").value = lastDate.getFullYear() + "-" + String(lastDate.getMonth() + 1).padStart(2, "0") + "-" + String(lastDate.getDate()).padStart(2, "0");
+
+  const c = requireContext();
+  const sessionResult = await client().auth.getSession();
+  if (sessionResult.error) throw sessionResult.error;
+  const accessToken = sessionResult.data?.session?.access_token;
+  if (!accessToken) throw new Error("Iniciá sesión nuevamente para usar el Coach IA.");
+
+  button.disabled = true;
+  const originalText = button.textContent;
+  button.textContent = "Generando propuesta…";
+  setStatus("Analizando el historial del atleta y construyendo el microciclo semanal…", "");
+  $("cpAiReview").hidden = true;
+  try {
+    const response = await fetch("/api/coach-ai-planning", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken },
+      body: JSON.stringify({
+        athleteId,
+        startDate: monday,
+        trainingDays: days,
+        durationMinutes: Number($("cpAiDuration").value || 85),
+        phase: $("cpPhase").value,
+        level: optionalNumber($("cpAthleteLevel").value),
+        objective: $("cpCycleObjective").value.trim(),
+        coachInstructions: $("cpCycleNotes").value.trim()
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "No se pudo generar el plan semanal.");
+    const plan = payload.plan;
+    if (!plan || !Array.isArray(plan.weeks) || !Array.isArray(plan.sessions)) throw new Error("La propuesta recibida no tiene una estructura válida.");
+    $("cpCycleName").value = $("cpCycleName").value.trim() || plan.name || "Planificación semanal asistida por IA";
+    $("cpCycleObjective").value = plan.objective || $("cpCycleObjective").value;
+    $("cpCycleNotes").value = plan.notes || $("cpCycleNotes").value;
+    applyStructure({
+      weeks: plan.weeks,
+      sessions: plan.sessions.map(session => Object.assign({}, session, {
+        scheduled_date: session.scheduled_date || null
+      }))
+    });
+    setAiReview(payload.review || {}, payload.meta || {});
+    showEditor();
+    setStatus("Propuesta semanal generada. Revisá ejercicios, volúmenes, intensidades y alertas; después guardala como borrador.", "success");
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
 async function saveDraft(event) {
   event.preventDefault();
   const button = $("cpSaveDraft");
@@ -773,6 +865,7 @@ function bind() {
     if (block) updateBlockPreview(block);
   });
   $("cpAthlete").addEventListener("change", setOptionsFromAthlete);
+  $("cpGenerateWithAI").addEventListener("click", () => generatePlanWithAI().catch(error => setStatus(error.message || error, "error")));
   $("cpCycleForm").addEventListener("submit", saveDraft);
   $("cpLoadTemplate").addEventListener("click", () => {
     try { useSelectedTemplate(); } catch (error) { setStatus(error.message || error, "error"); }
