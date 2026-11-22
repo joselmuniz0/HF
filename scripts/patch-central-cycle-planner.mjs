@@ -49,8 +49,9 @@ const panel=[
 '            <div id="cpAiReview" class="cp-ai-review" hidden></div>',
 '            <details class="cp-ai-import">',
 '              <summary>Importar la planificación semanal que genera el chat</summary>',
-'              <p>Pegá el bloque JSON de la planificación semanal. Se incorpora al editor para el atleta seleccionado; no se guarda ni se publica automáticamente.</p>',
+'              <p>Pegá el bloque JSON de la planificación semanal personal. Se incorpora al editor para el atleta seleccionado; no se guarda ni se publica automáticamente.</p>',
 '              <textarea id="cpImportChatJson" rows="8" spellcheck="false" placeholder="Pegá aquí el objeto JSON { plan: ..., review: ... }"></textarea>',
+'              <label class="cp-ai-confirm"><input id="cpConfirmChatImport" type="checkbox"> Confirmo que esta planificación personal corresponde al atleta seleccionado y que revisaré las cargas directas en kg.</label>',
 '              <button type="button" class="quiet" id="cpImportWeeklyPlan">Importar al editor del coach</button>',
 '            </details>',
 '            <div class="cp-weeks-heading"><div><h4>Microciclos</h4><p>OLY, fuerza y total semanal. El total se suma cuando ambos componentes están informados; puede corregirse manualmente.</p></div><button type="button" class="quiet" id="cpAddWeek">+ Agregar semana</button></div>',
@@ -99,6 +100,7 @@ css+="\n"+
 
 css+="\n"+
 ".cp-ai-import{border:1px solid #dce4df;border-radius:8px;padding:12px;margin:12px 0;background:#fff}.cp-ai-import summary{cursor:pointer;font-weight:600}.cp-ai-import p{font-size:12px;color:#68747b}.cp-ai-import textarea{width:100%;min-height:140px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;margin:8px 0;box-sizing:border-box}";
+css+="\n"+".cp-ai-confirm{display:flex;align-items:flex-start;gap:8px;font-size:12px;margin:8px 0 12px}.cp-ai-confirm input{margin-top:2px}";
 fs.writeFileSync(cssPath,css,"utf8");
 fs.copyFileSync(modulePath,path.join(dir,"coach-planning.mjs"));
 fs.copyFileSync(corePath,path.join(dir,"cycle-core.mjs"));
