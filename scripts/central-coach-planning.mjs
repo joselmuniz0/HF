@@ -717,6 +717,7 @@ async function generatePlanWithAI() {
 function importWeeklyPlanFromChat() {
   const athleteId = $("cpAthlete").value;
   if (!athleteId) throw new Error("Seleccioná primero el atleta al que corresponde la planificación.");
+  if (!$("cpConfirmChatImport").checked) throw new Error("Confirmá que esta planificación corresponde al atleta seleccionado y que revisarás las cargas antes de guardar.");
   const raw = $("cpImportChatJson").value.trim();
   if (!raw) throw new Error("Pegá el bloque JSON de la planificación semanal.");
   let cleaned = raw;
