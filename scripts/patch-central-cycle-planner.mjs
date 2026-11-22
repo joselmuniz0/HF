@@ -32,6 +32,21 @@ const panel=[
 '              <label>Inicio<input id="cpCycleStart" type="date" required></label><label>Finalización<input id="cpCycleEnd" type="date"></label>',
 '              <label class="cp-cycle-notes">Notas generales<textarea id="cpCycleNotes" rows="2"></textarea></label>',
 '            </div><datalist id="cpRmReferences"></datalist>',
+'            <div class="cp-ai-controls">',
+'              <div><b>Coach IA · propuesta semanal</b><small>Analiza datos reales del atleta y genera un borrador editable. No publica automáticamente.</small></div>',
+'              <fieldset class="cp-ai-days"><legend>Días de entrenamiento</legend>',
+'                <label><input type="checkbox" data-cp-ai-day value="1" checked> Lunes</label>',
+'                <label><input type="checkbox" data-cp-ai-day value="2" checked> Martes</label>',
+'                <label><input type="checkbox" data-cp-ai-day value="3" checked> Miércoles</label>',
+'                <label><input type="checkbox" data-cp-ai-day value="4"> Jueves</label>',
+'                <label><input type="checkbox" data-cp-ai-day value="5" checked> Viernes</label>',
+'                <label><input type="checkbox" data-cp-ai-day value="6"> Sábado</label>',
+'                <label><input type="checkbox" data-cp-ai-day value="7"> Domingo</label>',
+'              </fieldset>',
+'              <label>Duración máxima por sesión<select id="cpAiDuration"><option value="60">60 minutos</option><option value="75">75 minutos</option><option value="85" selected>85 minutos</option><option value="90">90 minutos</option><option value="105">105 minutos</option><option value="120">120 minutos</option></select></label>',
+'              <button type="button" class="primary" id="cpGenerateWithAI">Generar semana con Coach IA</button>',
+'            </div>',
+'            <div id="cpAiReview" class="cp-ai-review" hidden></div>',
 '            <div class="cp-weeks-heading"><div><h4>Microciclos</h4><p>OLY, fuerza y total semanal. El total se suma cuando ambos componentes están informados; puede corregirse manualmente.</p></div><button type="button" class="quiet" id="cpAddWeek">+ Agregar semana</button></div>',
 '            <div id="cpWeekBuilder" class="cp-week-builder"></div>',
 '            <div class="cp-save-template-panel"><div><b>Guardar como plantilla del coach</b><small>Reutilizable con otros atletas.</small></div><label>Nombre<input id="cpTemplateName" placeholder="Base preparatoria 4 días"></label><label>Descripción<input id="cpTemplateDescription" placeholder="Objetivo y características"></label><button type="button" class="quiet" id="cpSaveTemplate">Guardar plantilla</button></div>',
@@ -72,6 +87,10 @@ if(!css.includes(".hf-cycle-planner{")) css+="\n"+
 ".cp-notice-list{border:1px solid #cbded1;background:#f2f8f4;border-radius:9px;padding:12px;margin-bottom:14px}.cp-notice-list h4{margin:0 0 8px;color:#315b3d}.cp-athlete-notice{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #d8e6dc}.cp-athlete-notice p{margin:4px 0;color:#465a4c;font-size:13px}.cp-athlete-notice small{color:#687b6c;font-size:11px}.cp-athlete-notice button{white-space:nowrap}\n"+
 "@media(max-width:900px){.cp-cycle-header,.cp-week-grid,.cp-session-grid,.cp-exercise-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cp-block-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cp-save-template-panel{grid-template-columns:repeat(2,minmax(0,1fr))}}\n"+
 "@media(max-width:560px){.cp-cycle-header,.cp-week-grid,.cp-session-grid,.cp-exercise-grid,.cp-block-grid,.cp-save-template-panel{grid-template-columns:1fr}.cp-cycle-notes,.cp-week-notes,.cp-block-notes{grid-column:1}.cp-template-controls,.cp-library-toolbar,.cp-submit-row{align-items:stretch;flex-direction:column}.cp-template-controls>*{width:100%}.cp-plan-main,.cp-athlete-plan-head{flex-direction:column}.cp-plan-actions>*{width:100%}}\n";
+
+css+="\n"+
+".cp-ai-controls{display:grid;grid-template-columns:minmax(180px,1fr) minmax(250px,2fr) minmax(160px,1fr) auto;gap:12px;align-items:end;border:1px solid #cbd9d0;background:#f3f7f4;border-radius:9px;padding:14px;margin:14px 0}.cp-ai-controls>div:first-child{display:grid;gap:4px}.cp-ai-controls small{color:#68747b;font-size:12px}.cp-ai-days{display:flex;gap:8px 12px;flex-wrap:wrap;border:0;padding:0;margin:0}.cp-ai-days legend{font-size:12px;font-weight:600;margin-bottom:6px}.cp-ai-days label{display:flex;align-items:center;gap:4px;font-size:12px}.cp-ai-review{border:1px solid #d7e0da;border-radius:9px;padding:14px;margin:14px 0;background:#fafcfb}.cp-ai-review[hidden]{display:none!important}.cp-ai-review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cp-ai-review ul{margin:6px 0 10px;padding-left:18px;font-size:12px}.cp-ai-review small{font-size:11px;color:#68747b}@media(max-width:900px){.cp-ai-controls{grid-template-columns:1fr}.cp-ai-review-grid{grid-template-columns:1fr}}";
+
 fs.writeFileSync(cssPath,css,"utf8");
 fs.copyFileSync(modulePath,path.join(dir,"coach-planning.mjs"));
 fs.copyFileSync(corePath,path.join(dir,"cycle-core.mjs"));
