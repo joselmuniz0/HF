@@ -750,6 +750,68 @@ function importWeeklyPlanFromChat() {
       }
     }
   }
+  const athleteRecords = (context().getRecords ? context().getRecords() : []).filter(record => record.athlete_id === athleteId && record.validation_status === "validated");
+  const normalizeExerciseName = value => String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim().toLowerCase().replace(/\\s+/g, " ");
+  const coachChecks = Array.isArray(review.coach_checks) ? [...review.coach_checks] : [];
+  const addCoachCheck = message => { if (!coachChecks.includes(message)) coachChecks.push(message); };
+  for (const session of plan.sessions) {
+    for (const exercise of session.exercises) {
+      for (const block of exercise.blocks) {
+        const value = block.intensity_value == null ? null : Number(block.intensity_value);
+        if (block.intensity_type === "percent") {
+          if (value == null || value < -100 || value > 200) throw new Error("Un porcentaje del bloque está fuera del rango permitido.");
+          const reference = athleteRecords.find(record => normalizeExerciseName(record.exercise_name_snapshot) === normalizeExerciseName(block.reference_exercise));
+          block.manual_load_kg = null;
+          if (value < 0) {
+            block.reference_load_kg = reference ? Number(reference.record_value_kg) : null;
+            block.target_load_kg = null;
+          } else if (reference && Number(reference.record_value_kg) > 0) {
+            block.reference_load_kg = Number(reference.record_value_kg);
+            block.target_load_kg = Math.round(Number(reference.record_value_kg) * value / 100 * 2) / 2;
+          } else {
+            block.reference_load_kg = null;
+            block.target_load_kg = null;
+            addCoachCheck("No hay una marca validada de " + String(block.reference_exercise || "referencia") + " para " + exercise.exercise_name + "; el porcentaje queda sin convertir a kg.");
+          }
+        } else if (block.intensity_type === "kg") {
+          const proposed = block.target_load_kg == null ? value : Number(block.target_load_kg);
+          const comparable = athleteRecords.find(record => normalizeExerciseName(record.exercise_name_snapshot) === normalizeExerciseName(exercise.exercise_name));
+          if (comparable && proposed != null && proposed > Number(comparable.record_value_kg) * 1.05) {
+            block.intensity_type = "rpe";
+            block.target_rpe = block.target_rpe == null ? 6 : Number(block.target_rpe);
+            block.intensity_value = block.target_rpe;
+            block.target_load_kg = null;
+            block.manual_load_kg = null;
+            addCoachCheck("La carga propuesta para " + exercise.exercise_name + " supera en más de 5% su marca validada y se dejó en RPE.");
+          } else {
+            block.intensity_value = proposed;
+            block.target_load_kg = proposed;
+            block.manual_load_kg = null;
+            addCoachCheck("Confirmar la carga directa en kg de " + exercise.exercise_name + " contra el historial del atleta seleccionado.");
+          }
+        } else if (block.intensity_type === "rpe") {
+          const rpe = block.target_rpe == null ? value : Number(block.target_rpe);
+          if (rpe == null || rpe < 1 || rpe > 10) throw new Error("El RPE debe estar entre 1 y 10.");
+          block.target_rpe = rpe;
+          block.intensity_value = rpe;
+          block.target_load_kg = null;
+          block.manual_load_kg = null;
+        } else {
+          block.intensity_value = null;
+          block.reference_load_kg = null;
+          block.target_load_kg = null;
+          block.target_rpe = null;
+          block.manual_load_kg = null;
+        }
+      }
+    }
+  }
+  review.coach_checks = coachChecks;
+  if (!Array.isArray(review.data_used)) review.data_used = ["Plan semanal importado desde el chat"];
+  if (!Array.isArray(review.data_gaps)) review.data_gaps = [];
+  if (!Array.isArray(review.risk_flags)) review.risk_flags = [];
+  const personalPlanWarning = "La planificación del chat es personal: confirmar el perfil del atleta seleccionado antes de guardar.";
+  if (!review.risk_flags.includes(personalPlanWarning)) review.risk_flags.push(personalPlanWarning);
   const phase = $("cpPhase").value;
   const period = phase === "competition" ? "competitivo" : phase === "transition" ? "transicion" : "preparatorio";
   const week = Object.assign({}, plan.weeks[0], {
@@ -948,7 +1010,6 @@ function bind() {
     const block = event.target.closest("[data-cp-block]");
     if (block) updateBlockPreview(block);
   });
-  $("cpAthlete").addEventListener("change", setOptionsFromAthlete);
   $("cpGenerateWithAI").addEventListener("click", () => generatePlanWithAI().catch(error => setStatus(error.message || error, "error")));
   $("cpAthlete").addEventListener("change", () => {
     setOptionsFromAthlete();
