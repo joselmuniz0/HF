@@ -126,7 +126,7 @@ test -f .hf-central/supabase/functions/approve-athlete-access/index.ts
 test -f .hf-central/supabase/functions/create-athlete-invitation/index.ts
 grep -q 'function loadAthletePortal' .hf-central/admin/app.js
 grep -q 'function downloadOperationalCsv' .hf-central/admin/app.js
-grep -q 'create_athlete_atomic' .hf-central/admin/app.js
+grep -q 'create-athlete-invitation' .hf-central/admin/app.js
 grep -q 'newAthleteEmail' .hf-central/admin/index.html
 grep -q 'create-athlete-invitation' .hf-central/admin/app.js
 grep -q 'data-athlete-id' .hf-central/admin/app.js
