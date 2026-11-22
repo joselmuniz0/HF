@@ -751,7 +751,7 @@ function importWeeklyPlanFromChat() {
     }
   }
   const athleteRecords = (context().getRecords ? context().getRecords() : []).filter(record => record.athlete_id === athleteId && record.validation_status === "validated");
-  const normalizeExerciseName = value => String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim().toLowerCase().replace(/\\s+/g, " ");
+  const normalizeExerciseName = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
   const coachChecks = Array.isArray(review.coach_checks) ? [...review.coach_checks] : [];
   const addCoachCheck = message => { if (!coachChecks.includes(message)) coachChecks.push(message); };
   for (const session of plan.sessions) {
