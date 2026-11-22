@@ -13,15 +13,15 @@ function replaceOnce(source, needle, replacement, label) {
   return source.slice(0, at) + replacement + source.slice(at + needle.length);
 }
 
-const coachSelectOld = \`  if ($("newAthleteCoach")) {
+const coachSelectOld = `  if ($("newAthleteCoach")) {
     const coaches = data.memberships.filter(function(m){ return m.role === "coach"; }).map(function(m) {
       const p = data.coaches.find(function(c){ return c.user_id === m.user_id; });
       return '<option value="' + esc(m.user_id) + '">' + esc(p && p.display_name || p && p.email || "Coach") + '</option>';
     }).join("");
     $("newAthleteCoach").innerHTML = '<option value="">Asignarme a mí</option>' + coaches;
     $("newAthleteCoach").disabled = currentRole !== "admin";
-  }\`;
-const coachSelectNew = \`  if ($("newAthleteCoach")) {
+  }`;
+const coachSelectNew = `  if ($("newAthleteCoach")) {
     const coaches = data.memberships.filter(function(m){ return m.role === "coach"; }).map(function(m) {
       const p = data.coaches.find(function(c){ return c.user_id === m.user_id; });
       return '<option value="' + esc(m.user_id) + '">' + esc(p && p.display_name || p && p.email || "Coach") + '</option>';
@@ -36,13 +36,13 @@ const coachSelectNew = \`  if ($("newAthleteCoach")) {
       $("newAthleteCoach").disabled = true;
       $("newAthleteCoach").required = false;
     }
-  }\`;
+  }`;
 if (app.includes(coachSelectOld)) app = app.replace(coachSelectOld, coachSelectNew);
 
 const requestsStart = app.indexOf("  const requestRows = (data.accessRequests || []).filter(function(r){ return r.status === \\"pending\\"; });");
 const plansStart = app.indexOf('  $("plansList").innerHTML', requestsStart);
 if (requestsStart < 0 || plansStart < 0) throw new Error("No se encontró el listado de solicitudes de atletas.");
-const requestsBlock = \`  const requestRows = (data.accessRequests || []).filter(function(r){ return r.status === "pending"; });
+const requestsBlock = `  const requestRows = (data.accessRequests || []).filter(function(r){ return r.status === "pending"; });
   $("accessRequests").innerHTML = requestRows.map(function(r) {
     const coach = data.coaches.find(function(c){ return c.user_id === r.requested_coach_id; });
     const athlete = r.athlete_id ? data.athletes.find(function(a){ return a.id === r.athlete_id; }) : null;
@@ -59,13 +59,13 @@ const requestsBlock = \`  const requestRows = (data.accessRequests || []).filter
       '" data-athlete-id="' + esc(r.athlete_id || "") + '">Aprobar y vincular</button></div>';
   }).join("") || '<div class="empty">No hay solicitudes pendientes.</div>';
 
-\`;
+`;
 app = app.slice(0, requestsStart) + requestsBlock + app.slice(plansStart);
 
 const ownStart = app.indexOf("async function loadOwnRequests() {");
-const ownEnd = app.indexOf("\\nasync function registerAthleteAccount", ownStart);
+const ownEnd = app.indexOf("\nasync function registerAthleteAccount", ownStart);
 if (ownStart < 0 || ownEnd < 0) throw new Error("No se encontró loadOwnRequests.");
-const ownFunction = \`async function loadOwnRequests() {
+const ownFunction = `async function loadOwnRequests() {
   const result = await getClient().from("athlete_access_requests")
     .select("id,status,created_at,review_note,athlete_id").eq("requested_by", currentUserId)
     .order("created_at", {ascending:false});
@@ -83,13 +83,13 @@ const ownFunction = \`async function loadOwnRequests() {
     $("accessStatus").textContent = "Tu ficha ya fue guardada en la base general. El acceso al portal se activará cuando el coach apruebe la vinculación.";
     $("accessStatus").className = "status success";
   }
-}\`;
+}`;
 app = app.slice(0, ownStart) + ownFunction + app.slice(ownEnd);
 
 const approveStart = app.indexOf("async function approveAthleteAccount(event) {");
-const approveEnd = app.indexOf("\\nasync function createAthleteProfile", approveStart);
+const approveEnd = app.indexOf("\nasync function createAthleteProfile", approveStart);
 if (approveStart < 0 || approveEnd < 0) throw new Error("No se encontró approveAthleteAccount.");
-const approveFunction = \`async function approveAthleteAccount(event) {
+const approveFunction = `async function approveAthleteAccount(event) {
   const button = event.target.closest("[data-approve-request]");
   if (!button) return;
   const requestId = button.dataset.approveRequest;
@@ -110,7 +110,7 @@ const approveFunction = \`async function approveAthleteAccount(event) {
     button.disabled = false;
     message("No se pudo aprobar la solicitud: " + (error.message || error), "error");
   }
-}\`;
+}`;
 app = app.slice(0, approveStart) + approveFunction + app.slice(approveEnd);
 
 app = app.replace(
