@@ -12,6 +12,8 @@ node scripts/patch-central-stage2.mjs
 node scripts/patch-central-stage3.mjs
 node scripts/patch-central-stage4.mjs
 node scripts/patch-central-athlete-registration.mjs
+node scripts/patch-central-athlete-onboarding.mjs
+node --check scripts/patch-central-athlete-onboarding.mjs
 node scripts/patch-central-coach-invitations.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
@@ -59,6 +61,7 @@ cp supabase/migrations/20261119234500_hf_video_analysis_media_link.sql .hf-centr
 cp supabase/migrations/20261120182557_create_training_plan_atomic.sql .hf-central/supabase/migrations/20261120182557_create_training_plan_atomic.sql
 cp supabase/migrations/20261121120000_structured_training_cycles.sql .hf-central/supabase/migrations/20261121120000_structured_training_cycles.sql
 cp supabase/migrations/20261121130000_athlete_plan_notifications.sql .hf-central/supabase/migrations/20261121130000_athlete_plan_notifications.sql
+cp supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql .hf-central/supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -76,6 +79,8 @@ cp supabase/functions/manage-coach-invitations/index.ts .hf-central/supabase/fun
 mkdir -p .hf-central/supabase/functions/request-athlete-access .hf-central/supabase/functions/approve-athlete-access
 cp supabase/functions/request-athlete-access/index.ts .hf-central/supabase/functions/request-athlete-access/index.ts
 cp supabase/functions/approve-athlete-access/index.ts .hf-central/supabase/functions/approve-athlete-access/index.ts
+mkdir -p .hf-central/supabase/functions/create-athlete-invitation
+cp supabase/functions/create-athlete-invitation/index.ts .hf-central/supabase/functions/create-athlete-invitation/index.ts
 
 # El ZIP original ya cumplió su función. Se elimina para que los artefactos contengan solo el contenido extraído y actualizado.
 rm -f .hf-central/HF-Central-Overlay.zip
@@ -117,9 +122,14 @@ grep -q 'create-coach-invitation' .hf-central/admin/app.js
 grep -q 'coach_invite' .hf-central/admin/coach-invitations.js
 test -f .hf-central/supabase/functions/request-athlete-access/index.ts
 test -f .hf-central/supabase/functions/approve-athlete-access/index.ts
+test -f .hf-central/supabase/functions/create-athlete-invitation/index.ts
 grep -q 'function loadAthletePortal' .hf-central/admin/app.js
 grep -q 'function downloadOperationalCsv' .hf-central/admin/app.js
 grep -q 'create_athlete_atomic' .hf-central/admin/app.js
+grep -q 'newAthleteEmail' .hf-central/admin/index.html
+grep -q 'create-athlete-invitation' .hf-central/admin/app.js
+grep -q 'data-athlete-id' .hf-central/admin/app.js
+grep -q 'athlete_id' .hf-central/supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql
 grep -q 'create_athlete_atomic' .hf-central/supabase/migrations/20261118_create_athlete_atomic.sql
 grep -q 'security invoker' .hf-central/supabase/migrations/20261119_harden_athlete_registration_security.sql
 grep -q 'admins create athletes for coaches' .hf-central/supabase/migrations/20261119_harden_athlete_registration_security.sql
