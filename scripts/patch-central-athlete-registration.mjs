@@ -33,7 +33,7 @@ if (end < 0 || (nextPlain >= 0 && nextPlain < end)) end = nextPlain;
 if (end < 0) end = app.indexOf('\nconst ', start + 10);
 if (end < 0) throw new Error('No se pudo delimitar createAthleteProfile.');
 
-const replacement = \`async function createAthleteProfile(event) {
+const replacement = `async function createAthleteProfile(event) {
   event.preventDefault();
   const form = event.currentTarget || $("athleteCreateForm");
   const button = form && form.querySelector('button[type="submit"]');
@@ -70,7 +70,7 @@ const replacement = \`async function createAthleteProfile(event) {
   } finally {
     if (button) { button.disabled = false; button.textContent = "Crear ficha e invitar atleta"; }
   }
-}\`;
+}`;
 
 const replacementWithBinding = replacement + `
 document.getElementById("athleteCreateForm")?.addEventListener("input", () => {
