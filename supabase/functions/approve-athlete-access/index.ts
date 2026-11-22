@@ -6,11 +6,11 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+  status, headers: { ...corsHeaders, "Content-Type": "application/json", "Cache-Control": "no-store" },
 });
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Método no permitido." }, 405);
 
@@ -31,9 +31,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const requestId = String(body.request_id || "").trim();
-    const athleteId = String(body.athlete_id || "").trim();
-    if (!uuid.test(requestId) || !uuid.test(athleteId)) {
-      return json({ error: "Solicitud o ficha deportiva inválida." }, 400);
+    const suppliedAthleteId = String(body.athlete_id || "").trim();
+    if (!uuid.test(requestId) || (suppliedAthleteId && !uuid.test(suppliedAthleteId))) {
+      return json({ error: "La solicitud o ficha deportiva no es válida." }, 400);
     }
 
     const adminClient = createClient(url, serviceKey, {
@@ -64,15 +64,19 @@ Deno.serve(async (req) => {
       .eq("organization_id", requestRow.organization_id)
       .eq("user_id", requestRow.requested_coach_id).maybeSingle();
     if (targetCoachError) throw targetCoachError;
-    if (targetCoachMembership?.role !== "coach") {
-      return json({ error: "El coach destinatario ya no tiene un rol activo de coach." }, 403);
+    if (targetCoachMembership?.role !== "coach") return json({ error: "El coach destinatario ya no está habilitado." }, 403);
+
+    const athleteId = requestRow.athlete_id || suppliedAthleteId;
+    if (!athleteId) return json({ error: "La solicitud antigua no tiene una ficha asociada. Seleccioná manualmente la ficha deportiva." }, 400);
+    if (requestRow.athlete_id && suppliedAthleteId && suppliedAthleteId !== requestRow.athlete_id) {
+      return json({ error: "La ficha asociada a esta solicitud no coincide con la seleccionada." }, 409);
     }
 
     const { data: athlete, error: athleteError } = await adminClient
       .from("athletes").select("id, organization_id, full_name, owner_coach_id")
       .eq("id", athleteId).eq("organization_id", requestRow.organization_id).maybeSingle();
     if (athleteError) throw athleteError;
-    if (!athlete) return json({ error: "No se encontró la ficha deportiva seleccionada." }, 404);
+    if (!athlete) return json({ error: "No se encontró la ficha deportiva asociada." }, 404);
 
     if (!isAdmin && athlete.owner_coach_id !== authData.user.id) {
       const { data: assignment, error: assignmentError } = await adminClient
@@ -80,16 +84,15 @@ Deno.serve(async (req) => {
         .eq("organization_id", requestRow.organization_id)
         .eq("athlete_id", athleteId).eq("coach_id", authData.user.id).maybeSingle();
       if (assignmentError) throw assignmentError;
-      if (!assignment) return json({ error: "La ficha seleccionada no pertenece a tu grupo de atletas." }, 403);
+      if (!assignment) return json({ error: "La ficha no pertenece a tu grupo de atletas." }, 403);
     }
 
-    const { data: athleteAuth, error: athleteAuthError } =
-      await adminClient.auth.admin.getUserById(requestRow.requested_by);
+    const { data: athleteAuth, error: athleteAuthError } = await adminClient.auth.admin.getUserById(requestRow.requested_by);
     if (athleteAuthError) throw athleteAuthError;
     const requestedUser = athleteAuth.user;
     if (!requestedUser?.email_confirmed_at ||
         (requestedUser.email || "").toLowerCase() !== requestRow.requested_email.toLowerCase()) {
-      return json({ error: "La cuenta del atleta no tiene el correo verificado o no coincide con la solicitud." }, 403);
+      return json({ error: "El correo del atleta no está verificado o no coincide con la solicitud." }, 403);
     }
 
     const { data: approval, error: approvalError } = await adminClient.rpc("approve_athlete_access_request", {
@@ -99,7 +102,6 @@ Deno.serve(async (req) => {
     });
     if (approvalError) throw approvalError;
     if (!approval?.ok) return json({ error: approval?.error || "No se pudo completar la vinculación." }, 409);
-
     return json(approval);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 400);
