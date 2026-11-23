@@ -87,20 +87,34 @@ if (!app.includes("$('linkAthleteAiBtn').addEventListener('click', linkAthleteTo
   );
 }
 
-const planQuery = '      sb.from("training_sessions").select("*").eq("athlete_id",id)\n    ]);';
-if (app.includes(planQuery)) {
+const queryWithMedia = '      sb.from("media_assets").select("*").eq("athlete_id",id).order("created_at",{ascending:false})\n    ]);';
+const queryWithoutMedia = '      sb.from("training_sessions").select("*").eq("athlete_id",id)\n    ]);';
+if (app.includes(queryWithMedia) && !app.includes('athlete_ai_coach_assignments')) {
   app = replaceOnce(
     app,
-    planQuery,
+    queryWithMedia,
+    '      sb.from("media_assets").select("*").eq("athlete_id",id).order("created_at",{ascending:false}),\n' +
+    '      sb.from("athlete_ai_coach_assignments").select("coach_label,status").eq("athlete_id",id).eq("status","active").maybeSingle()\n    ]);',
+    "consultas del portal del atleta después de videoanálisis"
+  );
+} else if (app.includes(queryWithoutMedia) && !app.includes('athlete_ai_coach_assignments')) {
+  app = replaceOnce(
+    app,
+    queryWithoutMedia,
     '      sb.from("training_sessions").select("*").eq("athlete_id",id),\n' +
     '      sb.from("athlete_ai_coach_assignments").select("coach_label,status").eq("athlete_id",id).eq("status","active").maybeSingle()\n    ]);',
     "consultas del portal del atleta"
   );
 }
-const portalData = '      sessions:queries[11].data || []';
-if (app.includes(portalData)) {
-  app = replaceOnce(app, portalData,
-    portalData + ', aiCoach:queries[12]?.data || null',
+const portalDataWithMedia = '      sessions:queries[11].data || [], mediaAssets:queries[12].data || []';
+const portalDataWithoutMedia = '      sessions:queries[11].data || []';
+if (app.includes(portalDataWithMedia) && !app.includes('aiCoach:queries[')) {
+  app = replaceOnce(app, portalDataWithMedia,
+    portalDataWithMedia + ', aiCoach:queries[13]?.data || null',
+    "datos del portal con videoanálisis");
+} else if (app.includes(portalDataWithoutMedia) && !app.includes('aiCoach:queries[')) {
+  app = replaceOnce(app, portalDataWithoutMedia,
+    portalDataWithoutMedia + ', aiCoach:queries[12]?.data || null',
     "datos del portal");
 }
 const portalHeading = '$("athletePortalSub").textContent = athlete.full_name || "Perfil deportivo";';
