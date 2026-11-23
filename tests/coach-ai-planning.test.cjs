@@ -122,6 +122,21 @@ test("convierte cargas sin historial comparable o por encima del umbral a RPE", 
   assert.ok(result.review.coach_checks.length >= 2);
 });
 
+test("marca los registros y mediciones pendientes sin tratarlos como RM validadas", () => {
+  const result = validateGeneratedPlan(generated(), input, {
+    records: data.records,
+    measurements: [{
+      metric_key: "body_weight",
+      metric_value: 100,
+      unit: "kg",
+      validation_status: "pending_validation"
+    }],
+    sessionItems: data.sessionItems
+  });
+  assert.ok(result.review.coach_checks.some(item => item.includes("Clean & Jerk") && item.includes("No se utilizó como RM")));
+  assert.ok(result.review.coach_checks.some(item => item.includes("body_weight") && item.includes("pendiente de validación")));
+});
+
 test("construye las fechas del microciclo y conserva el total semanal", () => {
   const result = validateGeneratedPlan(generated(), input, data);
   assert.equal(result.plan.weeks[0].total_repetitions, 80);
