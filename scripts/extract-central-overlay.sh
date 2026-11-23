@@ -74,6 +74,7 @@ cp supabase/migrations/20261121120000_structured_training_cycles.sql .hf-central
 cp supabase/migrations/20261121130000_athlete_plan_notifications.sql .hf-central/supabase/migrations/20261121130000_athlete_plan_notifications.sql
 cp supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql .hf-central/supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql
 cp supabase/migrations/20261123021500_hf_athlete_ai_coach_assignment.sql .hf-central/supabase/migrations/20261123021500_hf_athlete_ai_coach_assignment.sql
+cp supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql .hf-central/supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -148,6 +149,8 @@ grep -q 'link-athlete-to-ai-coach' .hf-central/admin/app.js
 grep -q 'athlete_ai_coach_assignments' .hf-central/admin/app.js
 grep -q 'link_athlete_to_hf_ai' .hf-central/supabase/migrations/20261123021500_hf_athlete_ai_coach_assignment.sql
 test -f .hf-central/supabase/functions/link-athlete-to-ai-coach/index.ts
+test -f .hf-central/supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql
+grep -q 'v_ai_owner := p_user_id' .hf-central/supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql
 grep -q 'athlete_id' .hf-central/supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql
 grep -q 'create_athlete_atomic' .hf-central/supabase/migrations/20261118_create_athlete_atomic.sql
 grep -q 'security invoker' .hf-central/supabase/migrations/20261119_harden_athlete_registration_security.sql
