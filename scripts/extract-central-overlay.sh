@@ -17,13 +17,13 @@ node --check scripts/patch-central-athlete-onboarding.mjs
 node scripts/patch-central-coach-invitations.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
-node scripts/patch-central-athlete-ai-link.mjs
-node --check scripts/patch-central-athlete-ai-link.mjs
 node scripts/patch-central-bar-path-prototype.mjs
 node scripts/patch-central-planning-builder.mjs
 node --check scripts/patch-central-planning-builder.mjs
 node scripts/patch-central-cycle-planner.mjs
 node --check scripts/patch-central-cycle-planner.mjs
+node scripts/patch-central-athlete-ai-link.mjs
+node --check scripts/patch-central-athlete-ai-link.mjs
 node --check .hf-central/admin/coach-planning.mjs
 node --check .hf-central/admin/cycle-core.mjs
 
