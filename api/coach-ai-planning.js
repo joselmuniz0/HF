@@ -333,14 +333,30 @@ async function handler(req, res) {
     if (!athletes.length) return send(res, 404, { error: "No tenés acceso a este atleta o no existe." });
     const athlete = athletes[0];
 
-    const memberships = await readRows("organization_memberships", {
-      select: "role",
-      user_id: "eq." + user.id,
-      organization_id: "eq." + athlete.organization_id,
-      limit: "1"
-    }, accessToken, warnings, true);
-    if (!memberships.some(row => row.role === "coach" || row.role === "admin")) {
-      return send(res, 403, { error: "La generación asistida está disponible solamente para coaches y administradores de la organización." });
+    const [memberships, aiAssignments] = await Promise.all([
+      readRows("organization_memberships", {
+        select: "role",
+        user_id: "eq." + user.id,
+        organization_id: "eq." + athlete.organization_id,
+        limit: "1"
+      }, accessToken, warnings, true),
+      readRows("athlete_ai_coach_assignments", {
+        select: "athlete_id,status",
+        user_id: "eq." + user.id,
+        organization_id: "eq." + athlete.organization_id,
+        status: "eq.active",
+        limit: "10"
+      }, accessToken, warnings, true)
+    ]);
+    const hasCoachRole = memberships.some(row => row.role === "coach" || row.role === "admin");
+    const ownAiAssignment = aiAssignments.find(row =>
+      row.status === "active" && row.athlete_id === athleteId
+    );
+    if (!hasCoachRole && !ownAiAssignment) {
+      return send(res, 403, { error: "La generación asistida requiere rol de coach/administrador o una vinculación activa de tu propia cuenta con HF Coach IA." });
+    }
+    if (!hasCoachRole && aiAssignments.some(row => row.status === "active") && !ownAiAssignment) {
+      return send(res, 403, { error: "Coach IA solo puede generar propuestas para la ficha deportiva vinculada a tu propia cuenta." });
     }
 
     const [profiles, records, rawSessions, rawItems, plans, weeks, planSessions, planItems, blocks, evaluations] = await Promise.all([
@@ -495,6 +511,7 @@ async function handler(req, res) {
     }, { records, sessionItems });
     result.meta = {
       model: AI_MODEL,
+      generation_access: hasCoachRole ? "coach" : "athlete_ai_personal",
       data_quality: contextData.data_quality,
       scheduled_dates: scheduledDates
     };
