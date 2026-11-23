@@ -47,7 +47,7 @@
           autoRefreshToken: true,
           detectSessionInUrl: false,
           flowType: "implicit",
-          storageKey: "hf-coach-central-password-recovery"
+          storageKey: "sb-" + new URL(url).hostname.split(".")[0] + "-auth-token"
         }
       });
 
@@ -105,6 +105,22 @@
     }
   }
 
+  function showAuthCallbackNotice(message, type) {
+    const loginPanel = byId("loginPanel");
+    let notice = byId("authCallbackNotice");
+    if (!notice) {
+      notice = document.createElement("div");
+      notice.id = "authCallbackNotice";
+      notice.setAttribute("role", "status");
+      notice.className = "notice";
+      if (loginPanel) loginPanel.insertBefore(notice, loginPanel.firstChild);
+      else document.body.insertBefore(notice, document.body.firstChild);
+    }
+    notice.textContent = message;
+    notice.className = "notice" + (type ? " " + type : "");
+    notice.style.display = "block";
+  }
+
   async function finishRecoveryFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const tokenHash = params.get("token_hash");
@@ -114,71 +130,91 @@
     const accessToken = fragment.get("access_token");
     const refreshToken = fragment.get("refresh_token");
     const fragmentType = fragment.get("type");
+    const callbackType = fragmentType || tokenType || "";
 
-    // New recovery requests use implicit flow: the reset link carries a one-time
-    // session in the URL fragment, allowing the recipient device to establish it.
-    if (!tokenHash && !code && !(accessToken && refreshToken)) return;
+    const hasImplicitSession = Boolean(accessToken && refreshToken);
+    if (!tokenHash && !code && !hasImplicitSession) return;
 
+    // Supabase coach/athlete invitations have their own acceptance flow.
+    // Do not let the password-recovery controller intercept those links.
+    if (callbackType === "invite") return;
+
+    const supportedTypes = ["recovery", "signup", "email", "magiclink", "email_change"];
+    if (!code && !supportedTypes.includes(callbackType)) return;
+    if (hasImplicitSession && (!accessToken || !refreshToken)) return;
+
+    const isRecovery = callbackType === "recovery" || (Boolean(code) && !callbackType);
     const loginPanel = byId("loginPanel");
     const inviteSetupPanel = byId("inviteSetupPanel");
     const inviteDonePanel = byId("inviteDonePanel");
     const resetPanel = byId("passwordResetPanel");
     const resetForm = byId("passwordResetForm");
 
-    if (loginPanel) loginPanel.hidden = true;
-    if (inviteSetupPanel) inviteSetupPanel.hidden = true;
-    if (inviteDonePanel) inviteDonePanel.hidden = true;
-    if (resetPanel) resetPanel.hidden = false;
-    if (resetForm) resetForm.hidden = true;
-
-    showResetStatus("Validando el enlace de recuperación…", "");
+    if (isRecovery) {
+      if (loginPanel) loginPanel.hidden = true;
+      if (inviteSetupPanel) inviteSetupPanel.hidden = true;
+      if (inviteDonePanel) inviteDonePanel.hidden = true;
+      if (resetPanel) resetPanel.hidden = false;
+      if (resetForm) resetForm.hidden = true;
+      showResetStatus("Validando el enlace de recuperación…", "");
+    } else {
+      if (resetPanel) resetPanel.hidden = true;
+      if (loginPanel) loginPanel.hidden = false;
+      showAuthCallbackNotice("Validando el enlace de confirmación…", "");
+    }
 
     try {
       const client = await getRecoveryClient();
       let result;
 
-      if (accessToken && refreshToken) {
-        if (fragmentType !== "recovery") {
-          throw new Error("El enlace no corresponde a una recuperación de contraseña.");
-        }
+      if (hasImplicitSession) {
         result = await client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken
         });
       } else if (tokenHash) {
-        if (tokenType !== "recovery") {
-          throw new Error("El enlace no corresponde a una recuperación de contraseña.");
-        }
+        // Use the real Supabase OTP type (e.g. "email" for a confirmation link).
         result = await client.auth.verifyOtp({
           token_hash: tokenHash,
-          type: "recovery"
+          type: tokenType
         });
       } else {
-        // Legacy PKCE links work only on the browser/device that requested them.
+        // Legacy PKCE links are exchanged on the same browser that requested them.
         result = await client.auth.exchangeCodeForSession(code);
       }
 
       if (result.error) throw result.error;
-      if (!result.data || !result.data.session) {
+      const session = result.data && result.data.session;
+      if (!session) {
         throw new Error("Supabase no devolvió una sesión válida. El enlace pudo vencer o ya haberse utilizado.");
       }
 
-      const email = result.data.session.user && result.data.session.user.email;
-      const emailLabel = byId("passwordRecoveryEmail");
-      if (emailLabel) emailLabel.textContent = email || "Cuenta administradora";
+      if (isRecovery) {
+        const email = session.user && session.user.email;
+        const emailLabel = byId("passwordRecoveryEmail");
+        if (emailLabel) emailLabel.textContent = email || "Cuenta";
+        if (resetForm) resetForm.hidden = false;
+        showResetStatus("Enlace validado. Definí una contraseña nueva de al menos 10 caracteres.", "success");
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
 
-      if (resetForm) resetForm.hidden = false;
-      showResetStatus("Enlace validado. Definí una contraseña nueva de al menos 10 caracteres.", "success");
-      // Remove one-time codes/tokens from the address bar immediately after the session is established.
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // The shared Supabase storage key lets the main HF Central client read
+      // this verified session after reload and route the athlete to their next step.
+      const cleanPath = window.location.pathname || "/";
+      window.history.replaceState({}, document.title, cleanPath);
+      window.location.replace(cleanPath);
     } catch (error) {
-      console.error("HF Coach recovery callback failed:", error);
-      if (resetForm) resetForm.hidden = true;
-      showResetStatus(
-        "No se pudo validar el enlace: " + (error && error.message ? error.message : String(error)) +
-          (code && !accessToken && !tokenHash ? " Este enlace anterior pertenece al flujo PKCE: pedí uno nuevo desde la versión actual de HF Central." : ""),
-        "error"
-      );
+      console.error("HF Coach auth callback failed:", error);
+      const message = error && error.message ? error.message : String(error);
+      if (isRecovery) {
+        if (resetForm) resetForm.hidden = true;
+        showResetStatus("No se pudo validar el enlace de recuperación: " + message, "error");
+      } else {
+        if (resetPanel) resetPanel.hidden = true;
+        if (loginPanel) loginPanel.hidden = false;
+        showAuthCallbackNotice("No se pudo confirmar el correo: " + message + ". Solicitá un nuevo enlace e intentá otra vez.", "error");
+      }
     }
   }
 
