@@ -4,6 +4,18 @@
   "use strict";
 
   let recoveryClientPromise = null;
+  const RECOVERY_MARKER_KEY = "hf-coach-central-recovery-pending-at";
+
+  function hasRecentRecoveryRequest() {
+    try {
+      const requestedAt = Number(window.localStorage.getItem(RECOVERY_MARKER_KEY));
+      return Number.isFinite(requestedAt) && requestedAt > 0 && Date.now() - requestedAt < 60 * 60 * 1000;
+    } catch (_) { return false; }
+  }
+
+  function clearRecoveryRequestMarker() {
+    try { window.localStorage.removeItem(RECOVERY_MARKER_KEY); } catch (_) {}
+  }
 
   function byId(id) {
     return document.getElementById(id);
@@ -85,14 +97,16 @@
     try {
       const client = await getRecoveryClient();
       const redirectTo = window.location.origin + "/";
+      try { window.localStorage.setItem(RECOVERY_MARKER_KEY, String(Date.now())); } catch (_) {}
       const result = await client.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
-      if (result.error) throw result.error;
+      if (result.error) { clearRecoveryRequestMarker(); throw result.error; }
 
       showStatus(
         "Supabase aceptó la solicitud. Revisá Recibidos y Spam. Si el mensaje no llega, revisaremos los registros de entrega y los límites del correo integrado.",
         "success"
       );
     } catch (error) {
+      clearRecoveryRequestMarker();
       console.error("HF Coach recovery request failed:", error);
       showStatus(
         "No se pudo solicitar la recuperación: " +
@@ -143,7 +157,7 @@
     if (!code && !supportedTypes.includes(callbackType)) return;
     if (hasImplicitSession && (!accessToken || !refreshToken)) return;
 
-    const isRecovery = callbackType === "recovery" || (Boolean(code) && !callbackType);
+    const isRecovery = callbackType === "recovery" || (Boolean(code) && !callbackType && hasRecentRecoveryRequest());
     const loginPanel = byId("loginPanel");
     const inviteSetupPanel = byId("inviteSetupPanel");
     const inviteDonePanel = byId("inviteDonePanel");
@@ -195,12 +209,14 @@
         if (emailLabel) emailLabel.textContent = email || "Cuenta";
         if (resetForm) resetForm.hidden = false;
         showResetStatus("Enlace validado. Definí una contraseña nueva de al menos 10 caracteres.", "success");
+        clearRecoveryRequestMarker();
         window.history.replaceState({}, document.title, window.location.pathname);
         return;
       }
 
       // The shared Supabase storage key lets the main HF Central client read
       // this verified session after reload and route the athlete to their next step.
+      clearRecoveryRequestMarker();
       const cleanPath = window.location.pathname || "/";
       window.history.replaceState({}, document.title, cleanPath);
       window.location.replace(cleanPath);
