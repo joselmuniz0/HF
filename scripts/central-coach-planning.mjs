@@ -498,6 +498,7 @@ function renderPlanList(weekRows) {
     const athlete = athletes.find(a => a.id === plan.athlete_id);
     const weeks = weekRows.filter(w => w.plan_id === plan.id).sort((a,b) => a.week_number-b.week_number);
     const published = plan.status === "active";
+    const aiProposal = plan.status === "draft" && plan.generation_source === "coach_ai_personal";
     return '<article class="cp-plan-card">' +
       '<div class="cp-plan-main"><div><h4>' + esc(plan.name) + '</h4><div class="cp-plan-meta">' +
       esc(athlete?.full_name || "Atleta") + ' · ' + esc(phaseLabel(plan.training_phase)) + ' · ' +
@@ -506,12 +507,12 @@ function renderPlanList(weekRows) {
         '<span class="cp-week-pill">S' + esc(w.week_number) + ' · ' + esc(periodLabel(w.period)) +
         ' · OLY ' + esc(w.oly_repetitions ?? "—") + ' · F ' + esc(w.strength_repetitions ?? "—") +
         ' · Total ' + esc(w.total_repetitions ?? "—") + '</span>').join("") + '</div>' +
-      '</div><span class="cp-status-pill ' + (published ? "published" : "draft") + '">' +
-      (published ? "Publicado al atleta" : "Borrador") + '</span></div>' +
+      '</div><span class="cp-status-pill ' + (published ? "published" : aiProposal ? "pending-review" : "draft") + '">' +
+      (published ? "Publicado al atleta" : aiProposal ? "Propuesta IA · revisión pendiente" : "Borrador") + '</span></div>' +
       '<div class="cp-plan-actions"><button type="button" class="quiet" data-cp-view="' + esc(plan.id) + '">Ver detalle</button>' +
-      (plan.status === "draft" ? '<button type="button" class="primary" data-cp-publish="' + esc(plan.id) + '">Publicar al atleta</button>' : '') +
+      (plan.status === "draft" ? '<button type="button" class="primary" data-cp-publish="' + esc(plan.id) + '">' + (aiProposal ? "Aprobar y publicar" : "Publicar al atleta") + '</button>' : '') +
       '</div><div id="cpDetail-' + esc(plan.id) + '" class="cp-plan-detail" hidden></div>' +
-      '<div class="cp-published-note">' + (published ? "Visible en el portal del atleta desde " + dateLabel(plan.published_at) + "." : "Todavía no es visible para el atleta.") + '</div>' +
+      '<div class="cp-published-note">' + (published ? "Visible en el portal del atleta desde " + dateLabel(plan.published_at) + "." : aiProposal ? "Propuesta generada por HF Coach IA. Revisá los datos, las cargas y las alertas antes de publicarla." : "Todavía no es visible para el atleta.") + '</div>' +
       '</article>';
   }).join("");
   $("cpPlanList").innerHTML = rows || '<div class="empty">Todavía no hay ciclos de entrenamiento. Creá uno o cargá una plantilla.</div>';
@@ -561,7 +562,11 @@ async function publishPlan(planId) {
   const plan = currentPlans.find(p => p.id === planId);
   if (!plan) return;
   const athlete = (context().getAthletes() || []).find(a => a.id === plan.athlete_id);
-  if (!window.confirm('Publicar "' + plan.name + '" para ' + (athlete?.full_name || "el atleta") + '? El plan pasará a estar visible en su portal de HF Coach.')) return;
+  const aiProposal = plan.generation_source === "coach_ai_personal";
+  const prompt = aiProposal
+    ? 'Revisaste la propuesta de HF Coach IA "' + plan.name + '" para ' + (athlete?.full_name || "el atleta") + ' y confirmás que puede publicarse? Esta acción la convierte en una planificación activa visible en el portal.'
+    : 'Publicar "' + plan.name + '" para ' + (athlete?.full_name || "el atleta") + '? El plan pasará a estar visible en su portal de HF Coach.';
+  if (!window.confirm(prompt)) return;
   try {
     const result = await client().rpc("publish_training_plan", { p_plan_id:planId });
     if (result.error) throw result.error;
@@ -897,6 +902,93 @@ async function refresh() {
     setStatus("No se pudo actualizar la planificación: " + (error.message || error), "error");
   }
 }
+function renderAthleteAiPlanForm() {
+  const panel = $("athleteAiPlanPanel");
+  if (!panel) return;
+  const d = context()?.getAthletePortalData?.() || {};
+  const linked = d.aiCoach?.status === "active" && d.aiCoach?.coach_label === "HF Coach IA";
+  panel.hidden = !linked;
+  if (!linked) return;
+  const start = $("athleteAiPlanStart");
+  if (start && !start.value) start.value = nextMondayISO();
+  const objective = $("athleteAiPlanObjective");
+  if (objective && !objective.value) {
+    objective.value = "Desarrollar técnica, aceleración y fuerza/carga con una progresión semanal coherente.";
+  }
+}
+async function submitAthleteAiPlan(event) {
+  event.preventDefault();
+  const form = $("athleteAiPlanForm");
+  const button = $("athleteAiPlanGenerate");
+  const status = $("athleteAiPlanStatus");
+  const originalText = button?.textContent || "Generar mi semana con Coach IA";
+  const setMessage = (message, kind) => {
+    status.textContent = message;
+    status.className = "status " + (kind || "");
+  };
+  try {
+    const c = requireContext();
+    const d = c.getAthletePortalData() || {};
+    const athlete = d.athlete;
+    if (!athlete?.id || d.aiCoach?.status !== "active") {
+      throw new Error("No encontramos una vinculación activa de tu cuenta con HF Coach IA.");
+    }
+    const trainingDays = Array.from(form.querySelectorAll("[data-athlete-ai-day]:checked"))
+      .map(input => Number(input.value)).sort((a,b) => a-b);
+    if (!trainingDays.length) throw new Error("Seleccioná al menos un día de entrenamiento.");
+    const startDate = $("athleteAiPlanStart").value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || new Date(startDate + "T12:00:00").getDay() !== 1) {
+      throw new Error("La fecha de inicio debe ser un lunes.");
+    }
+    const session = await client().auth.getSession();
+    if (session.error) throw session.error;
+    const accessToken = session.data?.session?.access_token;
+    if (!accessToken) throw new Error("La sesión venció. Volvé a ingresar para generar tu semana.");
+    button.disabled = true;
+    button.textContent = "Generando y guardando propuesta…";
+    setMessage("Coach IA está analizando tus datos y preparando una propuesta. Las marcas y mediciones pendientes no se usarán como RM validadas.", "");
+    const response = await fetch("/api/coach-ai-planning", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + accessToken },
+      body: JSON.stringify({
+        athleteId: athlete.id,
+        startDate,
+        trainingDays,
+        durationMinutes: Number($("athleteAiPlanDuration").value || 85),
+        phase: $("athleteAiPlanPhase").value || "general_preparation",
+        level: athlete.level == null ? null : Number(athlete.level),
+        objective: $("athleteAiPlanObjective").value.trim(),
+        coachInstructions: $("athleteAiPlanNotes").value.trim()
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || "No se pudo generar la propuesta semanal.");
+    if (!payload.meta?.saved_plan_id || payload.meta?.saved_plan_status !== "draft" || payload.meta?.human_review_required !== true) {
+      throw new Error("La IA devolvió una planificación, pero no confirmó que quedara guardada como borrador sujeto a revisión humana.");
+    }
+    setMessage("Propuesta guardada. Está pendiente de revisión humana y todavía no es una planificación activa.", "success");
+    await c.refreshAthletePortalData();
+    if (typeof form.reset === "function") {
+      const dateValue = startDate;
+      form.reset();
+      $("athleteAiPlanStart").value = dateValue;
+      $("athleteAiPlanDuration").value = "85";
+      ["1","2","3","5"].forEach(day => {
+        const checkbox = form.querySelector('[data-athlete-ai-day="' + day + '"]');
+        if (checkbox) checkbox.checked = true;
+      });
+      renderAthleteAiPlanForm();
+    }
+  } catch (error) {
+    setMessage(error.message || String(error), "error");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+}
+
 function renderAthleteNotifications(notifications) {
   if (!notifications.length) return "";
   return '<div class="cp-notice-list"><h4>Avisos de tu coach</h4>' +
@@ -922,10 +1014,13 @@ async function renderAthletePlans() {
   const c = context();
   if (!c || !c.getAthletePortalData) return;
   const d = c.getAthletePortalData() || {};
-  const plans = (d.plans || []).filter(p => p.status === "active");
+  renderAthleteAiPlanForm();
+  const plans = (d.plans || []).filter(p =>
+    p.status === "active" || (p.status === "draft" && p.generation_source === "coach_ai_personal")
+  ).sort((a,b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
   const notificationMarkup = renderAthleteNotifications((d.notifications || []).filter(n => !n.read_at));
   if (!plans.length) {
-    $("athletePlans").innerHTML = notificationMarkup + '<div class="empty">Tu coach todavía no publicó una planificación.</div>';
+    $("athletePlans").innerHTML = notificationMarkup + '<div class="empty">Todavía no hay planificaciones publicadas ni propuestas pendientes de revisión.</div>';
     return;
   }
   try {
@@ -948,8 +1043,11 @@ async function renderAthletePlans() {
         '<div class="cp-athlete-plan-head"><div><h4>' + esc(plan.name) + '</h4><div class="cp-plan-meta">' +
         esc(phaseLabel(plan.training_phase)) + ' · ' + dateLabel(plan.start_date) +
         (plan.end_date ? " – " + dateLabel(plan.end_date) : "") + '</div></div>' +
-        '<span class="cp-status-pill published">Publicado</span></div>' +
-        '<p class="cp-published-note">Tu coach publicó esta planificación el ' + dateLabel(plan.published_at || plan.approved_at) + '.</p>' +
+        '<span class="cp-status-pill ' + (plan.status === "active" ? "published" : "pending-review") + '">' +
+        (plan.status === "active" ? "Publicado" : "Pendiente de revisión humana") + '</span></div>' +
+        (plan.status === "active"
+          ? '<p class="cp-published-note">Tu coach publicó esta planificación el ' + dateLabel(plan.published_at || plan.approved_at) + '.</p>'
+          : '<p class="cp-published-note">HF Coach IA generó esta propuesta. No está aprobada ni se considera una planificación activa; un revisor humano debe validar sus ejercicios, volúmenes, intensidades y alertas.</p>') +
         planWeeks.map(week => {
           const weekSessions = planSessions.filter(s => s.week_number === week.week_number);
           return '<section class="cp-athlete-week"><h5>Semana ' + esc(week.week_number) + ' · ' + esc(periodLabel(week.period)) +
@@ -972,7 +1070,7 @@ async function renderAthletePlans() {
                 }).join("") + '</div>';
             }).join("") + (week.notes ? '<small>' + esc(week.notes) + '</small>' : '') + '</section>';
         }).join("") +
-        (plan.notes ? '<p>' + esc(plan.notes) + '</p>' : '') +
+        (plan.notes ? '<p class="cp-plan-notes">' + esc(plan.notes) + '</p>' : '') +
         '</article>';
     }).join("");
   } catch (error) {
@@ -1033,6 +1131,7 @@ function bind() {
   $("cpLoadZetaExample").addEventListener("click", zetaExample);
   $("cpPlanList").addEventListener("click", onCycleClick);
   $("athletePlans").addEventListener("click", onCycleClick);
+  if ($("athleteAiPlanForm")) $("athleteAiPlanForm").addEventListener("submit", submitAthleteAiPlan);
 }
 function start() {
   if (!root) return;
