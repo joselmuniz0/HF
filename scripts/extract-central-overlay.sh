@@ -24,6 +24,8 @@ node scripts/patch-central-cycle-planner.mjs
 node --check scripts/patch-central-cycle-planner.mjs
 node scripts/patch-central-athlete-ai-link.mjs
 node --check scripts/patch-central-athlete-ai-link.mjs
+node scripts/patch-central-athlete-ai-planning.mjs
+node --check scripts/patch-central-athlete-ai-planning.mjs
 node --check .hf-central/admin/coach-planning.mjs
 node --check .hf-central/admin/cycle-core.mjs
 
@@ -75,6 +77,7 @@ cp supabase/migrations/20261121130000_athlete_plan_notifications.sql .hf-central
 cp supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql .hf-central/supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql
 cp supabase/migrations/20261123021500_hf_athlete_ai_coach_assignment.sql .hf-central/supabase/migrations/20261123021500_hf_athlete_ai_coach_assignment.sql
 cp supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql .hf-central/supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql
+cp supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql .hf-central/supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -151,6 +154,11 @@ grep -q 'link_athlete_to_hf_ai' .hf-central/supabase/migrations/20261123021500_h
 test -f .hf-central/supabase/functions/link-athlete-to-ai-coach/index.ts
 test -f .hf-central/supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql
 grep -q 'v_ai_owner := p_user_id' .hf-central/supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql
+test -f .hf-central/supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql
+grep -q "status = 'draft'" .hf-central/supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql
+grep -q "athletes read own personal AI plan proposals" .hf-central/supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql
+grep -q 'athleteAiPlanForm' .hf-central/admin/index.html
+grep -q 'saved_plan_id' .hf-central/admin/coach-planning.mjs
 grep -q 'athlete_id' .hf-central/supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql
 grep -q 'create_athlete_atomic' .hf-central/supabase/migrations/20261118_create_athlete_atomic.sql
 grep -q 'security invoker' .hf-central/supabase/migrations/20261119_harden_athlete_registration_security.sql
