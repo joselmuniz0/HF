@@ -150,6 +150,16 @@ function validateGeneratedPlan(output, input, data) {
   }
 
   const coachChecks = new Set((Array.isArray(review.coach_checks) ? review.coach_checks : []).map(safeText).filter(Boolean));
+  const pendingRecords = (data.records || []).filter(record => record.validation_status !== "validated");
+  const pendingMeasurements = (data.measurements || []).filter(item => item.validation_status !== "validated");
+  for (const record of pendingRecords) {
+    coachChecks.add("Marca declarada pendiente de validación: " + safeText(record.exercise_name_snapshot, 100) +
+      " (" + Number(record.record_value_kg).toLocaleString("es-AR") + " kg). No se utilizó como RM de referencia.");
+  }
+  for (const measurement of pendingMeasurements) {
+    coachChecks.add("Medición declarada pendiente de validación: " + safeText(measurement.metric_key, 80) +
+      " (" + Number(measurement.metric_value).toLocaleString("es-AR") + " " + safeText(measurement.unit, 20) + ").");
+  }
   const week = plan.weeks[0];
   week.week_number = 1;
   week.period = input.phase === "competition" ? "competitivo" : input.phase === "transition" ? "transicion" : "preparatorio";
@@ -359,9 +369,10 @@ async function handler(req, res) {
       return send(res, 403, { error: "Coach IA solo puede generar propuestas para la ficha deportiva vinculada a tu propia cuenta." });
     }
 
-    const [profiles, records, rawSessions, rawItems, plans, weeks, planSessions, planItems, blocks, evaluations] = await Promise.all([
-      readRows("athlete_profiles", { select: "sporting_start_date,federation,dominant_side", athlete_id: "eq." + athleteId, limit: "1" }, accessToken, warnings),
+    const [profiles, records, measurements, rawSessions, rawItems, plans, weeks, planSessions, planItems, blocks, evaluations] = await Promise.all([
+      readRows("athlete_profiles", { select: "sporting_start_date,federation,dominant_side,profile_notes", athlete_id: "eq." + athleteId, limit: "1" }, accessToken, warnings),
       readRows("athlete_personal_records", { select: "exercise_name_snapshot,record_value_kg,record_date,record_type,validation_status", athlete_id: "eq." + athleteId, order: "record_date.desc", limit: "40" }, accessToken, warnings),
+      readRows("athlete_measurements", { select: "metric_key,metric_value,unit,measured_at,validation_status,notes", athlete_id: "eq." + athleteId, order: "measured_at.desc", limit: "40" }, accessToken, warnings),
       readRows("training_sessions", { select: "id,session_date,session_type,main_load_kg,rpe,completion_status,notes", athlete_id: "eq." + athleteId, order: "session_date.desc", limit: "35" }, accessToken, warnings),
       readRows("training_session_items", { select: "training_session_id,exercise_name_snapshot,sets_completed,reps_completed,load_kg,rpe,rest_seconds,notes,created_at", athlete_id: "eq." + athleteId, order: "created_at.desc", limit: "120" }, accessToken, warnings),
       readRows("training_plans", { select: "name,objective,training_phase,start_date,end_date,status,athlete_level,created_at", athlete_id: "eq." + athleteId, order: "created_at.desc", limit: "12" }, accessToken, warnings),
@@ -374,6 +385,10 @@ async function handler(req, res) {
 
     const validatedRecords = records.filter(record => record.validation_status === "validated");
     const pendingRecords = records.filter(record => record.validation_status !== "validated");
+    const validatedMeasurements = measurements.filter(item => item.validation_status === "validated");
+    const pendingMeasurements = measurements.filter(item => item.validation_status !== "validated");
+    const validatedBodyWeight = validatedMeasurements.find(item => item.metric_key === "body_weight");
+    const pendingBodyWeight = pendingMeasurements.find(item => item.metric_key === "body_weight");
     const completedSessions = rawSessions.filter(session => ["completed", "partial"].includes(session.completion_status));
     const completedIds = new Set(completedSessions.map(session => session.id));
     const sessionItems = rawItems.filter(item => completedIds.has(item.training_session_id));
@@ -385,16 +400,33 @@ async function handler(req, res) {
         age: athlete.age ?? null,
         level: athlete.level ?? null,
         sex: athlete.sex ?? null,
-        body_weight_kg: athlete.body_weight_kg ?? null,
+        body_weight_kg: athlete.body_weight_kg ?? validatedBodyWeight?.metric_value ?? null,
+        body_weight_validation: athlete.body_weight_kg != null || validatedBodyWeight ? "validated" : pendingBodyWeight ? "pending_validation" : "missing",
+        reported_body_weight_pending_kg: pendingBodyWeight?.metric_value ?? null,
         sporting_start_date: profiles[0]?.sporting_start_date ?? null,
         federation: profiles[0]?.federation ?? null,
-        dominant_side: profiles[0]?.dominant_side ?? null
+        dominant_side: profiles[0]?.dominant_side ?? null,
+        profile_notes: safeText(profiles[0]?.profile_notes, 1200),
+        general_notes: safeText(athlete.notes, 1200)
       },
       validated_personal_records: validatedRecords.map(record => ({
         exercise: record.exercise_name_snapshot,
         value_kg: record.record_value_kg,
         date: record.record_date,
         type: record.record_type
+      })),
+      declared_records_pending_validation: pendingRecords.map(record => ({
+        exercise: record.exercise_name_snapshot,
+        reported_value_kg: record.record_value_kg,
+        date: record.record_date,
+        validation_status: record.validation_status
+      })),
+      validated_measurements: validatedMeasurements.map(item => ({
+        metric: item.metric_key, value: item.metric_value, unit: item.unit, date: item.measured_at
+      })),
+      declared_measurements_pending_validation: pendingMeasurements.map(item => ({
+        metric: item.metric_key, reported_value: item.metric_value, unit: item.unit,
+        date: item.measured_at, validation_status: item.validation_status
       })),
       recent_completed_sessions: completedSessions.slice(0, 24).map(session => ({
         date: session.session_date,
@@ -436,6 +468,9 @@ async function handler(req, res) {
       data_quality: {
         validated_personal_records: validatedRecords.length,
         records_pending_or_unvalidated: pendingRecords.length,
+        validated_measurements: validatedMeasurements.length,
+        measurements_pending_validation: pendingMeasurements.length,
+        body_weight_pending_validation: Boolean(pendingBodyWeight),
         completed_or_partial_sessions: completedSessions.length,
         recorded_exercise_sets: sessionItems.length,
         prior_plans: plans.length,
@@ -447,7 +482,7 @@ async function handler(req, res) {
     const systemPrompt = [
       "Sos Coach IA de HF Coach, una asistencia para planificar halterofilia. Tu salida es una propuesta técnica para revisión de un coach humano, nunca una decisión autónoma.",
       "Principio metodológico central: construir cada sesión y la semana desde el triángulo técnica, aceleración y carga. Técnica: posiciones, trayectoria y consistencia. Aceleración: intención de acelerar la barra y ejercicios que desarrollen velocidad; no inventes mediciones de velocidad si el sistema no las registra. Carga: progresión respaldada por datos y dosificación adecuada. No sacrifiques una dimensión por otra.",
-      "Analizá el historial con prudencia. Diferenciá registros validados de los pendientes. Para porcentajes usá solo un registro personal validado cuyo nombre de ejercicio coincida con exactitud con la referencia seleccionada. No inventes RM, marcas, kg, RPE, adherencia ni métricas. Si no hay referencia válida, usá RPE o dejá la carga sin asignar y explicá qué debe revisar el coach.",
+      "Analizá el historial con prudencia. Diferenciá registros validados de los pendientes. Los valores dentro de declared_records_pending_validation y declared_measurements_pending_validation son datos declarados: podés mencionarlos como pendientes, pero no los uses para estimar, calcular ni asignar cargas o porcentajes. Para porcentajes usá solo un registro personal validado cuyo nombre de ejercicio coincida con exactitud con la referencia seleccionada. No inventes RM, marcas, kg, RPE, adherencia ni métricas. Si no hay referencia válida, usá RPE o dejá la carga sin asignar y explicá qué debe revisar el coach.",
       "Los complejos se expresan en reps como notación libre (por ejemplo 1+1+1); no conviertas automáticamente esa notación en volumen de repeticiones. No confundas variantes de ejercicios con el ejercicio de referencia. Conservá la notación porcentual negativa como notación sin convertirla a kg.",
       "Programá una semana exacta y una sesión por cada día solicitado. Ajustá el volumen y complejidad al nivel, experiencia, antecedentes registrados y tiempo disponible. Si faltan sesiones o historial, decilo en data_gaps y evitá progresiones supuestas. El trabajo técnico, potencia/aceleración, fuerza y complementario debe tener una lógica semanal coherente.",
       "No hagas diagnóstico médico. No infieras lesiones ni patologías. Las advertencias médicas o restricciones que el coach escriba deben quedar visibles para revisión humana, sin dar recomendaciones clínicas.",
@@ -508,13 +543,71 @@ async function handler(req, res) {
       phase,
       level: levelValue,
       objective
-    }, { records, sessionItems });
+    }, { records, measurements, sessionItems });
     result.meta = {
       model: AI_MODEL,
       generation_access: hasCoachRole ? "coach" : "athlete_ai_personal",
       data_quality: contextData.data_quality,
       scheduled_dates: scheduledDates
     };
+
+    // A personal athlete request is persisted atomically as a draft.
+    // Publishing remains reserved for an authenticated human coach/admin.
+    if (!hasCoachRole && ownAiAssignment) {
+      const reviewNotes = [
+        "PROPUESTA DE HF COACH IA · PENDIENTE DE REVISIÓN HUMANA",
+        result.plan.notes,
+        "Resumen de revisión IA: " + result.review.summary,
+        result.review.data_used.length ? "Datos utilizados: " + result.review.data_used.join(" | ") : "",
+        result.review.data_gaps.length ? "Datos faltantes: " + result.review.data_gaps.join(" | ") : "",
+        result.review.coach_checks.length ? "Verificaciones pendientes: " + result.review.coach_checks.join(" | ") : "",
+        result.review.risk_flags.length ? "Alertas: " + result.review.risk_flags.join(" | ") : ""
+      ].filter(Boolean).join("\n");
+
+      const endDate = result.plan.sessions.reduce((latest, session) =>
+        String(session.scheduled_date || "") > latest ? String(session.scheduled_date) : latest, startDate
+      );
+      const persistResponse = await fetch(SUPABASE_URL + "/rest/v1/rpc/create_athlete_ai_weekly_plan", {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: "Bearer " + accessToken,
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify({
+          p_athlete_id: athleteId,
+          p_name: result.plan.name,
+          p_objective: result.plan.objective,
+          p_training_phase: phase,
+          p_athlete_level: levelValue,
+          p_start_date: startDate,
+          p_end_date: endDate,
+          p_notes: reviewNotes,
+          p_weeks: result.plan.weeks,
+          p_sessions: result.plan.sessions,
+          p_ai_model: AI_MODEL
+        }),
+        signal: AbortSignal.timeout(20000)
+      });
+      if (!persistResponse.ok) {
+        const detail = await persistResponse.text().catch(() => "");
+        console.error("HF Coach AI draft persistence failed", persistResponse.status, detail.slice(0, 500));
+        if (persistResponse.status === 409) {
+          return send(res, 409, { error: "Ya existe una planificación o propuesta para esa semana. Revisá «Mi planificación» antes de generar otra." });
+        }
+        return send(res, 502, { error: "La semana se generó, pero no pudo guardarse como propuesta pendiente de revisión. No se publicó ni quedó registrada." });
+      }
+      const savedPlanId = await persistResponse.json().catch(() => null);
+      if (!uuid(savedPlanId)) {
+        console.error("HF Coach AI draft persistence returned an invalid plan ID", savedPlanId);
+        return send(res, 502, { error: "La propuesta no pudo confirmarse en la base de datos. No se anunció como guardada." });
+      }
+      result.meta.saved_plan_id = savedPlanId;
+      result.meta.saved_plan_status = "draft";
+      result.meta.human_review_required = true;
+      result.meta.review_status_label = "pending_human_review";
+    }
     return send(res, 200, result);
   } catch (error) {
     console.error("HF Coach AI planning failed", error);
