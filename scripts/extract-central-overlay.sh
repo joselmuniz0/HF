@@ -13,12 +13,12 @@ node scripts/patch-central-stage3.mjs
 node scripts/patch-central-stage4.mjs
 node scripts/patch-central-athlete-registration.mjs
 node scripts/patch-central-athlete-onboarding.mjs
-node scripts/patch-central-athlete-ai-link.mjs
-node --check scripts/patch-central-athlete-ai-link.mjs
 node --check scripts/patch-central-athlete-onboarding.mjs
 node scripts/patch-central-coach-invitations.mjs
 node scripts/patch-central-role-ui.mjs
 node scripts/patch-central-video-analysis.mjs
+node scripts/patch-central-athlete-ai-link.mjs
+node --check scripts/patch-central-athlete-ai-link.mjs
 node scripts/patch-central-bar-path-prototype.mjs
 node scripts/patch-central-planning-builder.mjs
 node --check scripts/patch-central-planning-builder.mjs
