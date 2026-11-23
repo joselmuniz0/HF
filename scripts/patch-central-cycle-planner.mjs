@@ -81,7 +81,7 @@ if(!app.includes("window.HFCoachPlanning=")){
     '      sessions:queries[11].data || [], mediaAssets:queries[12].data || [], notifications:queries[13].data || []',
     "el almacenamiento de avisos en el portal del atleta");
   app=app.slice(0,a)+chunk+app.slice(b);
-  app+='\n\n// Puente de datos para el módulo de ciclos de HF Coach.\nwindow.HFCoachPlanning=Object.freeze({getClient:()=>getClient(),getOrganizationId:()=>organizationId,getCurrentUserId:()=>currentUserId,getCurrentRole:()=>currentRole,getAthletes:()=>data.athletes||[],getRecords:()=>data.records||[],getPlans:()=>data.plans||[],getAthletePortalData:()=>athletePortalData,refreshCoachData:()=>loadData()});\n';
+  app+='\n\n// Puente de datos para el módulo de ciclos de HF Coach.\nwindow.HFCoachPlanning=Object.freeze({getClient:()=>getClient(),getOrganizationId:()=>organizationId,getCurrentUserId:()=>currentUserId,getCurrentRole:()=>currentRole,getAthletes:()=>data.athletes||[],getRecords:()=>data.records||[],getPlans:()=>data.plans||[],getAthletePortalData:()=>athletePortalData,refreshCoachData:()=>loadData(),refreshAthletePortalData:()=>loadAthletePortal()});\n';
 }
 fs.writeFileSync(appPath,app,"utf8");
 let css=fs.readFileSync(cssPath,"utf8");
