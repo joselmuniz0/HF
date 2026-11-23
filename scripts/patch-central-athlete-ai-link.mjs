@@ -87,9 +87,18 @@ if (!app.includes("$('linkAthleteAiBtn').addEventListener('click', linkAthleteTo
   );
 }
 
+const queryWithNotifications = '      sb.from("athlete_notifications").select("*").eq("athlete_id",id).order("created_at",{ascending:false})\n    ]);';
 const queryWithMedia = '      sb.from("media_assets").select("*").eq("athlete_id",id).order("created_at",{ascending:false})\n    ]);';
 const queryWithoutMedia = '      sb.from("training_sessions").select("*").eq("athlete_id",id)\n    ]);';
-if (app.includes(queryWithMedia) && !app.includes('athlete_ai_coach_assignments')) {
+if (app.includes(queryWithNotifications) && !app.includes('athlete_ai_coach_assignments')) {
+  app = replaceOnce(
+    app,
+    queryWithNotifications,
+    '      sb.from("athlete_notifications").select("*").eq("athlete_id",id).order("created_at",{ascending:false}),\n' +
+    '      sb.from("athlete_ai_coach_assignments").select("coach_label,status").eq("athlete_id",id).eq("status","active").maybeSingle()\n    ]);',
+    "consultas del portal del atleta después de avisos internos"
+  );
+} else if (app.includes(queryWithMedia) && !app.includes('athlete_ai_coach_assignments')) {
   app = replaceOnce(
     app,
     queryWithMedia,
@@ -106,9 +115,14 @@ if (app.includes(queryWithMedia) && !app.includes('athlete_ai_coach_assignments'
     "consultas del portal del atleta"
   );
 }
+const portalDataWithNotifications = '      sessions:queries[11].data || [], mediaAssets:queries[12].data || [], notifications:queries[13].data || []';
 const portalDataWithMedia = '      sessions:queries[11].data || [], mediaAssets:queries[12].data || []';
 const portalDataWithoutMedia = '      sessions:queries[11].data || []';
-if (app.includes(portalDataWithMedia) && !app.includes('aiCoach:queries[')) {
+if (app.includes(portalDataWithNotifications) && !app.includes('aiCoach:queries[')) {
+  app = replaceOnce(app, portalDataWithNotifications,
+    portalDataWithNotifications + ', aiCoach:queries[14]?.data || null',
+    "datos del portal con videoanálisis y avisos");
+} else if (app.includes(portalDataWithMedia) && !app.includes('aiCoach:queries[')) {
   app = replaceOnce(app, portalDataWithMedia,
     portalDataWithMedia + ', aiCoach:queries[13]?.data || null',
     "datos del portal con videoanálisis");
