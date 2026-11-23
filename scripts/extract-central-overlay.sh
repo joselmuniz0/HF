@@ -45,6 +45,7 @@ echo "HF Central recovery.js syntax check passed."
 grep -q 'callbackType === "invite"' .hf-central/admin/recovery.js
 grep -q 'type: tokenType' .hf-central/admin/recovery.js
 grep -q 'function showAuthCallbackNotice' .hf-central/admin/recovery.js
+grep -q 'hasRecentRecoveryRequest()' .hf-central/admin/recovery.js
 if grep -q 'hf-coach-central-password-recovery' .hf-central/admin/recovery.js; then
   echo "Recovery client must share the main HF Central session storage key." >&2
   exit 1
