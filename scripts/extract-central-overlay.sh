@@ -42,6 +42,14 @@ node --input-type=module --check < .hf-central/admin/app.js
 echo "HF Central app.js syntax check passed."
 node --check .hf-central/admin/recovery.js
 echo "HF Central recovery.js syntax check passed."
+grep -q 'callbackType === "invite"' .hf-central/admin/recovery.js
+grep -q 'type: tokenType' .hf-central/admin/recovery.js
+grep -q 'function showAuthCallbackNotice' .hf-central/admin/recovery.js
+if grep -q 'hf-coach-central-password-recovery' .hf-central/admin/recovery.js; then
+  echo "Recovery client must share the main HF Central session storage key." >&2
+  exit 1
+fi
+echo "HF Central auth callback regression checks passed."
 node --check .hf-central/admin/coach-invitations.js
 echo "HF Central coach-invitations.js syntax check passed."
 grep -q 'coachVideoAnalysisDetails' .hf-central/admin/index.html
