@@ -369,10 +369,12 @@ async function handler(req, res) {
       return send(res, 403, { error: "Coach IA solo puede generar propuestas para la ficha deportiva vinculada a tu propia cuenta." });
     }
 
-    const [profiles, records, measurements, rawSessions, rawItems, plans, weeks, planSessions, planItems, blocks, evaluations] = await Promise.all([
+    const [profiles, records, measurements, aiOnboardingRows, healthDeclarations, rawSessions, rawItems, plans, weeks, planSessions, planItems, blocks, evaluations] = await Promise.all([
       readRows("athlete_profiles", { select: "sporting_start_date,federation,dominant_side,profile_notes", athlete_id: "eq." + athleteId, limit: "1" }, accessToken, warnings),
       readRows("athlete_personal_records", { select: "exercise_name_snapshot,record_value_kg,record_date,record_type,validation_status", athlete_id: "eq." + athleteId, order: "record_date.desc", limit: "40" }, accessToken, warnings),
       readRows("athlete_measurements", { select: "metric_key,metric_value,unit,measured_at,validation_status,notes", athlete_id: "eq." + athleteId, order: "measured_at.desc", limit: "40" }, accessToken, warnings),
+      readRows("athlete_ai_onboarding", { select: "declared_age,height_cm,weight_kg,training_years,training_days_per_week,training_objective,declared_level,level_status,snatch_kg,snatch_not_tested,clean_jerk_kg,clean_jerk_not_tested,back_squat_kg,back_squat_not_tested,front_squat_kg,front_squat_not_tested,profile_status,personal_data_status,sport_data_status,declared_at", athlete_id: "eq." + athleteId, limit: "1" }, accessToken, warnings),
+      readRows("athlete_health_declarations", { select: "health_status,chronic_conditions,bone_joint_injuries,muscular_injuries,surgeries,medication_and_treatments,medical_restrictions,other_relevant_history,consent_for_ai_processing,consent_version,declared_at,declaration_status", athlete_id: "eq." + athleteId, order: "declared_at.desc", limit: "1" }, accessToken, warnings),
       readRows("training_sessions", { select: "id,session_date,session_type,main_load_kg,rpe,completion_status,notes", athlete_id: "eq." + athleteId, order: "session_date.desc", limit: "35" }, accessToken, warnings),
       readRows("training_session_items", { select: "training_session_id,exercise_name_snapshot,sets_completed,reps_completed,load_kg,rpe,rest_seconds,notes,created_at", athlete_id: "eq." + athleteId, order: "created_at.desc", limit: "120" }, accessToken, warnings),
       readRows("training_plans", { select: "name,objective,training_phase,start_date,end_date,status,athlete_level,created_at", athlete_id: "eq." + athleteId, order: "created_at.desc", limit: "12" }, accessToken, warnings),
@@ -383,8 +385,37 @@ async function handler(req, res) {
       readRows("evaluations", { select: "lift,created_at,metrics,findings,review_status,coach_feedback,confidence", athlete_id: "eq." + athleteId, review_status: "eq.reviewed", order: "created_at.desc", limit: "12" }, accessToken, warnings)
     ]);
 
-    const validatedRecords = records.filter(record => record.validation_status === "validated");
-    const pendingRecords = records.filter(record => record.validation_status !== "validated");
+    const onboarding = aiOnboardingRows[0] || null;
+    const healthDeclaration = healthDeclarations[0] || null;
+    if (!hasCoachRole && ownAiAssignment) {
+      if (!onboarding || onboarding.profile_status !== "ready_for_ai_planning") {
+        const reason = onboarding?.profile_status === "needs_video_assessment"
+          ? "Primero completá la evaluación técnica por video y definí el nivel deportivo."
+          : "Primero completá tu evaluación inicial y resolvé los estados pendientes de salud o revisión humana.";
+        return send(res, 409, { error: reason });
+      }
+      if (!healthDeclaration || healthDeclaration.health_status !== "no_known_conditions" ||
+          healthDeclaration.consent_for_ai_processing !== true) {
+        return send(res, 403, { error: "La declaración de salud y su autorización de tratamiento no habilitan todavía la planificación personal con IA." });
+      }
+    }
+
+    const isCurrentRm = record => {
+      const name = String(record.exercise_name_snapshot || "").toLowerCase();
+      const matches = [
+        { names:["snatch","arranque"], value:onboarding?.snatch_kg, notTested:onboarding?.snatch_not_tested },
+        { names:["clean & jerk","clean and jerk","envión"], value:onboarding?.clean_jerk_kg, notTested:onboarding?.clean_jerk_not_tested },
+        { names:["back squat","sentadilla trasera"], value:onboarding?.back_squat_kg, notTested:onboarding?.back_squat_not_tested },
+        { names:["front squat","sentadilla frontal"], value:onboarding?.front_squat_kg, notTested:onboarding?.front_squat_not_tested }
+      ];
+      const target = matches.find(item => item.names.includes(name));
+      if (!target) return true;
+      return !target.notTested && target.value != null &&
+        Number(record.record_value_kg) === Number(target.value);
+    };
+    const eligibleRecords = onboarding ? records.filter(isCurrentRm) : records;
+    const validatedRecords = eligibleRecords.filter(record => record.validation_status === "validated");
+    const pendingRecords = eligibleRecords.filter(record => record.validation_status !== "validated");
     const validatedMeasurements = measurements.filter(item => item.validation_status === "validated");
     const pendingMeasurements = measurements.filter(item => item.validation_status !== "validated");
     const validatedBodyWeight = validatedMeasurements.find(item => item.metric_key === "body_weight");
@@ -397,12 +428,21 @@ async function handler(req, res) {
 
     const contextData = {
       athlete: {
-        age: athlete.age ?? null,
+        age: onboarding?.declared_age ?? athlete.age ?? null,
+        age_status: onboarding ? "athlete_declared" : "missing",
+        declared_level: onboarding?.declared_level ?? null,
+        level_status: onboarding?.level_status ?? "missing",
+        level_validated: onboarding?.level_status === "coach_validated",
+        training_years: onboarding?.training_years ?? null,
+        training_days_per_week: onboarding?.training_days_per_week ?? null,
+        training_objective: onboarding?.training_objective ?? null,
+        height_cm: onboarding?.height_cm ?? validatedMeasurements.find(item => item.metric_key === "height")?.metric_value ?? null,
+        height_status: onboarding ? "athlete_declared" : (validatedMeasurements.some(item => item.metric_key === "height") ? "validated" : "missing"),
         level: athlete.level ?? null,
         sex: athlete.sex ?? null,
-        body_weight_kg: athlete.body_weight_kg ?? validatedBodyWeight?.metric_value ?? null,
-        body_weight_validation: athlete.body_weight_kg != null || validatedBodyWeight ? "validated" : pendingBodyWeight ? "pending_validation" : "missing",
-        reported_body_weight_pending_kg: pendingBodyWeight?.metric_value ?? null,
+        body_weight_kg: validatedBodyWeight?.metric_value ?? null,
+        body_weight_validation: validatedBodyWeight ? "validated" : (onboarding || pendingBodyWeight) ? "athlete_declared_pending_validation" : "missing",
+        reported_body_weight_pending_kg: onboarding?.weight_kg ?? pendingBodyWeight?.metric_value ?? null,
         sporting_start_date: profiles[0]?.sporting_start_date ?? null,
         federation: profiles[0]?.federation ?? null,
         dominant_side: profiles[0]?.dominant_side ?? null,
@@ -428,6 +468,22 @@ async function handler(req, res) {
         metric: item.metric_key, reported_value: item.metric_value, unit: item.unit,
         date: item.measured_at, validation_status: item.validation_status
       })),
+      onboarding_profile_status: onboarding?.profile_status ?? "not_completed",
+      declared_level: onboarding ? {
+        value: onboarding.declared_level,
+        status: onboarding.level_status
+      } : null,
+      health_declaration: healthDeclaration?.consent_for_ai_processing ? {
+        status: healthDeclaration.health_status,
+        chronic_conditions: healthDeclaration.chronic_conditions,
+        bone_joint_injuries: healthDeclaration.bone_joint_injuries,
+        muscular_injuries: healthDeclaration.muscular_injuries,
+        surgeries: healthDeclaration.surgeries,
+        medication_and_treatments: healthDeclaration.medication_and_treatments,
+        medical_restrictions: healthDeclaration.medical_restrictions,
+        other_relevant_history: healthDeclaration.other_relevant_history,
+        declaration_status: healthDeclaration.declaration_status
+      } : { status: healthDeclaration?.health_status ?? "not_reported", details_shared_with_ai: false },
       recent_completed_sessions: completedSessions.slice(0, 24).map(session => ({
         date: session.session_date,
         type: session.session_type,
@@ -470,7 +526,10 @@ async function handler(req, res) {
         records_pending_or_unvalidated: pendingRecords.length,
         validated_measurements: validatedMeasurements.length,
         measurements_pending_validation: pendingMeasurements.length,
-        body_weight_pending_validation: Boolean(pendingBodyWeight),
+        body_weight_pending_validation: Boolean(pendingBodyWeight || onboarding),
+        onboarding_profile_status: onboarding?.profile_status ?? "not_completed",
+        health_declaration_status: healthDeclaration?.health_status ?? "not_reported",
+        level_status: onboarding?.level_status ?? "missing",
         completed_or_partial_sessions: completedSessions.length,
         recorded_exercise_sets: sessionItems.length,
         prior_plans: plans.length,
@@ -485,7 +544,7 @@ async function handler(req, res) {
       "Analizá el historial con prudencia. Diferenciá registros validados de los pendientes. Los valores dentro de declared_records_pending_validation y declared_measurements_pending_validation son datos declarados: podés mencionarlos como pendientes, pero no los uses para estimar, calcular ni asignar cargas o porcentajes. Para porcentajes usá solo un registro personal validado cuyo nombre de ejercicio coincida con exactitud con la referencia seleccionada. No inventes RM, marcas, kg, RPE, adherencia ni métricas. Si no hay referencia válida, usá RPE o dejá la carga sin asignar y explicá qué debe revisar el coach.",
       "Los complejos se expresan en reps como notación libre (por ejemplo 1+1+1); no conviertas automáticamente esa notación en volumen de repeticiones. No confundas variantes de ejercicios con el ejercicio de referencia. Conservá la notación porcentual negativa como notación sin convertirla a kg.",
       "Programá una semana exacta y una sesión por cada día solicitado. Ajustá el volumen y complejidad al nivel, experiencia, antecedentes registrados y tiempo disponible. Si faltan sesiones o historial, decilo en data_gaps y evitá progresiones supuestas. El trabajo técnico, potencia/aceleración, fuerza y complementario debe tener una lógica semanal coherente.",
-      "No hagas diagnóstico médico. No infieras lesiones ni patologías. Las advertencias médicas o restricciones que el coach escriba deben quedar visibles para revisión humana, sin dar recomendaciones clínicas.",
+      "No hagas diagnóstico médico, no estimes riesgos clínicos y no declares aptitud médica. Si hay antecedentes de salud declarados, tratá el texto únicamente como restricciones/observaciones aportadas por el atleta o coach, no como diagnóstico; conservá alertas para revisión humana y no prescribas ejercicios que contradigan restricciones explícitas. La IA no sustituye una evaluación profesional de salud.",
       "Devolvé únicamente el objeto JSON solicitado por el esquema. No incluyas markdown."
     ].join("\n");
 
