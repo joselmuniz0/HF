@@ -1016,19 +1016,31 @@ function loadJsPdf() {
   if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
   if (jsPdfLoaderPromise) return jsPdfLoaderPromise;
   jsPdfLoaderPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/jspdf@4.2.1/dist/jspdf.umd.min.js";
-    script.async = true;
-    script.onload = () => {
-      const PdfConstructor = window.jspdf && window.jspdf.jsPDF;
-      if (PdfConstructor) resolve(PdfConstructor);
-      else reject(new Error("El generador PDF se cargó, pero no quedó disponible."));
+    const sources = [
+      "https://cdn.jsdelivr.net/npm/jspdf@4.2.1/dist/jspdf.umd.min.js",
+      "https://unpkg.com/jspdf@4.2.1/dist/jspdf.umd.min.js"
+    ];
+    const trySource = index => {
+      if (window.jspdf && window.jspdf.jsPDF) return resolve(window.jspdf.jsPDF);
+      if (index >= sources.length) {
+        jsPdfLoaderPromise = null;
+        return reject(new Error("No se pudo cargar el generador PDF. Revisá la conexión e intentá nuevamente."));
+      }
+      const script = document.createElement("script");
+      script.src = sources[index];
+      script.async = true;
+      script.onload = () => {
+        const PdfConstructor = window.jspdf && window.jspdf.jsPDF;
+        if (PdfConstructor) resolve(PdfConstructor);
+        else trySource(index + 1);
+      };
+      script.onerror = () => {
+        script.remove();
+        trySource(index + 1);
+      };
+      document.head.appendChild(script);
     };
-    script.onerror = () => {
-      jsPdfLoaderPromise = null;
-      reject(new Error("No se pudo cargar el generador PDF. Revisá la conexión e intentá nuevamente."));
-    };
-    document.head.appendChild(script);
+    trySource(0);
   });
   return jsPdfLoaderPromise;
 }
@@ -1037,7 +1049,7 @@ function cleanPdfText(value) {
   return String(value == null ? "" : value)
     .replace(/\\\\n/g, "\\n")
     .replace(/\\r/g, "")
-    .replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, " ")
+    .replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, " ")
     .replace(/[–—]/g, "-")
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
