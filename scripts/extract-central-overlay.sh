@@ -82,6 +82,9 @@ cp supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql .hf-central
 cp supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql .hf-central/supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql
 cp supabase/migrations/20261124090000_hf_athlete_ai_onboarding_and_declarations.sql .hf-central/supabase/migrations/20261124090000_hf_athlete_ai_onboarding_and_declarations.sql
 cp supabase/migrations/20261124100000_fix_hf_athlete_ai_onboarding_validation.sql .hf-central/supabase/migrations/20261124100000_fix_hf_athlete_ai_onboarding_validation.sql
+cp supabase/migrations/20261124110000_fix_hf_onboarding_service_role_auth_lookup.sql .hf-central/supabase/migrations/20261124110000_fix_hf_onboarding_service_role_auth_lookup.sql
+cp supabase/migrations/20261124112000_hf_ai_plan_human_review.sql .hf-central/supabase/migrations/20261124112000_hf_ai_plan_human_review.sql
+cp supabase/migrations/20261124113000_athlete_read_rejected_ai_proposals.sql .hf-central/supabase/migrations/20261124113000_athlete_read_rejected_ai_proposals.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -166,6 +169,16 @@ grep -q "athletes read own personal AI plan proposals" .hf-central/supabase/migr
 grep -q 'athleteAiPlanForm' .hf-central/admin/index.html
 grep -q 'saved_plan_id' .hf-central/admin/coach-planning.mjs
 grep -q 'submitAthleteAiOnboarding' .hf-central/admin/coach-planning.mjs
+grep -q 'response.clone().json' .hf-central/admin/coach-planning.mjs
+grep -q 'review_athlete_ai_plan' .hf-central/admin/coach-planning.mjs
+grep -q 'data-cp-reject' .hf-central/admin/coach-planning.mjs
+grep -q 'plan.status === "rejected"' .hf-central/admin/coach-planning.mjs
+grep -q 'training_plan_rejected' supabase/migrations/20261124112000_hf_ai_plan_human_review.sql
+grep -q 'status in (\x27draft\x27,\x27rejected\x27)' supabase/migrations/20261124113000_athlete_read_rejected_ai_proposals.sql
+test -f .hf-central/supabase/migrations/20261124110000_fix_hf_onboarding_service_role_auth_lookup.sql
+test -f .hf-central/supabase/migrations/20261124112000_hf_ai_plan_human_review.sql
+test -f .hf-central/supabase/migrations/20261124113000_athlete_read_rejected_ai_proposals.sql
+echo "HF athlete onboarding error and AI plan review workflow checks passed."
 grep -q 'ready_for_ai_planning' .hf-central/admin/coach-planning.mjs
 grep -q 'submit-athlete-ai-onboarding' .hf-central/admin/coach-planning.mjs
 grep -q 'profileAllowsAiDraft' api/coach-ai-planning.js
