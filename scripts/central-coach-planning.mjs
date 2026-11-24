@@ -1047,9 +1047,9 @@ function loadJsPdf() {
 
 function cleanPdfText(value) {
   return String(value == null ? "" : value)
-    .replace(/\\\\n/g, "\\n")
-    .replace(/\\r/g, "")
-    .replace(/[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F]/g, " ")
+    .replace(/\\n/g, "\n")
+    .replace(/\r/g, "")
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, " ")
     .replace(/[–—]/g, "-")
     .replace(/[“”]/g, '"')
     .replace(/[‘’]/g, "'")
