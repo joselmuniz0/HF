@@ -159,6 +159,11 @@ grep -q "status = 'draft'" .hf-central/supabase/migrations/20261123040000_hf_ath
 grep -q "athletes read own personal AI plan proposals" .hf-central/supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql
 grep -q 'athleteAiPlanForm' .hf-central/admin/index.html
 grep -q 'saved_plan_id' .hf-central/admin/coach-planning.mjs
+grep -q 'downloadAthletePlanPdf' .hf-central/admin/coach-planning.mjs
+grep -q 'data-cp-download' .hf-central/admin/coach-planning.mjs
+grep -q 'jspdf@4.2.1/dist/jspdf.umd.min.js' .hf-central/admin/coach-planning.mjs
+grep -q 'Página ' .hf-central/admin/coach-planning.mjs
+echo "HF athlete PDF download integration checks passed."
 grep -q 'athlete_id' .hf-central/supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.sql
 grep -q 'create_athlete_atomic' .hf-central/supabase/migrations/20261118_create_athlete_atomic.sql
 grep -q 'security invoker' .hf-central/supabase/migrations/20261119_harden_athlete_registration_security.sql
