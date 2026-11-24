@@ -930,17 +930,8 @@ function renderAthleteAiOnboarding() {
   if (!panel) return;
   const d = context()?.getAthletePortalData?.() || {};
   const linked = d.aiCoach?.status === "active" && d.aiCoach?.coach_label === "HF Coach IA";
-  const health = d.healthDeclaration;
-  const levelReady = d.aiOnboarding?.level_status !== "pending_video_assessment";
-  const healthReady = health?.consent_for_ai_processing === true &&
-    ["no_known_conditions","conditions_reported"].includes(health.health_status);
-  const profileReady = d.aiOnboarding?.profile_status === "ready_for_ai_planning" ||
-    (d.aiOnboarding?.profile_status === "requires_human_review" &&
-     health?.health_status === "conditions_reported" &&
-     health?.consent_for_ai_processing === true);
-  const ready = profileReady && healthReady && levelReady;
-  panel.hidden = !linked || !ready;
-  if (!linked || !ready) return;
+  panel.hidden = !linked;
+  if (!linked) return;
   const profile = d.aiOnboarding || null;
   const health = d.healthDeclaration || null;
   const form = $("athleteAiOnboardingForm");
@@ -1079,8 +1070,17 @@ function renderAthleteAiPlanForm() {
   if (!panel) return;
   const d = context()?.getAthletePortalData?.() || {};
   const linked = d.aiCoach?.status === "active" && d.aiCoach?.coach_label === "HF Coach IA";
-  panel.hidden = !linked;
-  if (!linked) return;
+  const health = d.healthDeclaration;
+  const levelReady = d.aiOnboarding?.level_status !== "pending_video_assessment";
+  const healthReady = health?.consent_for_ai_processing === true &&
+    ["no_known_conditions","conditions_reported"].includes(health.health_status);
+  const profileReady = d.aiOnboarding?.profile_status === "ready_for_ai_planning" ||
+    (d.aiOnboarding?.profile_status === "requires_human_review" &&
+     health?.health_status === "conditions_reported" &&
+     health?.consent_for_ai_processing === true);
+  const ready = profileReady && healthReady && levelReady;
+  panel.hidden = !linked || !ready;
+  if (!linked || !ready) return;
   const start = $("athleteAiPlanStart");
   if (start && !start.value) start.value = nextMondayISO();
   const objective = $("athleteAiPlanObjective");
