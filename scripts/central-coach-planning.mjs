@@ -930,7 +930,15 @@ function renderAthleteAiOnboarding() {
   if (!panel) return;
   const d = context()?.getAthletePortalData?.() || {};
   const linked = d.aiCoach?.status === "active" && d.aiCoach?.coach_label === "HF Coach IA";
-  const ready = d.aiOnboarding?.profile_status === "ready_for_ai_planning";
+  const health = d.healthDeclaration;
+  const levelReady = d.aiOnboarding?.level_status !== "pending_video_assessment";
+  const healthReady = health?.consent_for_ai_processing === true &&
+    ["no_known_conditions","conditions_reported"].includes(health.health_status);
+  const profileReady = d.aiOnboarding?.profile_status === "ready_for_ai_planning" ||
+    (d.aiOnboarding?.profile_status === "requires_human_review" &&
+     health?.health_status === "conditions_reported" &&
+     health?.consent_for_ai_processing === true);
+  const ready = profileReady && healthReady && levelReady;
   panel.hidden = !linked || !ready;
   if (!linked || !ready) return;
   const profile = d.aiOnboarding || null;
@@ -992,7 +1000,9 @@ function renderAthleteAiOnboarding() {
   if(message) {
     if(status==="ready_for_ai_planning") message.textContent="Perfil completo para generar propuestas. Tu nivel es autodeclarado; marcas y medidas siguen pendientes de validación.";
     else if(status==="needs_video_assessment") message.textContent="Falta la evaluación técnica por video para definir el nivel. La generación de un plan personal permanece bloqueada.";
-    else if(status==="requires_human_review") message.textContent="La declaración de salud requiere revisión humana o no fue autorizada para su tratamiento por HF Coach IA. No se generará una planificación individualizada hasta resolverlo.";
+    else if(status==="requires_human_review" && health?.health_status==="conditions_reported" && health?.consent_for_ai_processing) message.textContent="Declaraste antecedentes de salud y autorizaste su tratamiento. Podés solicitar una propuesta IA, pero quedará como borrador y requerirá revisión humana antes de publicarse.";
+    else if(status==="requires_human_review") message.textContent="La declaración de salud no fue autorizada para su tratamiento por HF Coach IA o elegiste no informar antecedentes. Podés solicitar revisión humana; no se generará una planificación individualizada.";
+
     else message.textContent="Completá todos los datos, declarando una RM vigente o indicando que no tenés RM para cada levantamiento.";
   }
   if($("athleteAiHealthStatus")) setAthleteAiHealthFields();
@@ -1095,8 +1105,16 @@ async function submitAthleteAiPlan(event) {
     if (!athlete?.id || d.aiCoach?.status !== "active") {
       throw new Error("No encontramos una vinculación activa de tu cuenta con HF Coach IA.");
     }
-    if (d.aiOnboarding?.profile_status !== "ready_for_ai_planning") {
-      throw new Error("Antes de planificar, completá la evaluación inicial y resolvé los estados pendientes de salud o nivel.");
+    const health = d.healthDeclaration;
+    const levelReady = d.aiOnboarding?.level_status !== "pending_video_assessment";
+    const healthReady = health?.consent_for_ai_processing === true &&
+      ["no_known_conditions","conditions_reported"].includes(health.health_status);
+    const profileReady = d.aiOnboarding?.profile_status === "ready_for_ai_planning" ||
+      (d.aiOnboarding?.profile_status === "requires_human_review" &&
+       health?.health_status === "conditions_reported" &&
+       health?.consent_for_ai_processing === true);
+    if (!profileReady || !healthReady || !levelReady) {
+      throw new Error("Antes de planificar, completá la evaluación inicial y resolvé los estados pendientes de salud, autorización o nivel.");
     }
     const trainingDays = Array.from(form.querySelectorAll("[data-athlete-ai-day]:checked"))
       .map(input => Number(input.value)).sort((a,b) => a-b);
