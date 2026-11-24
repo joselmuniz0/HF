@@ -388,15 +388,28 @@ async function handler(req, res) {
     const onboarding = aiOnboardingRows[0] || null;
     const healthDeclaration = healthDeclarations[0] || null;
     if (!hasCoachRole && ownAiAssignment) {
-      if (!onboarding || onboarding.profile_status !== "ready_for_ai_planning") {
-        const reason = onboarding?.profile_status === "needs_video_assessment"
+      const healthAllowsAiDraft = Boolean(
+        healthDeclaration &&
+        healthDeclaration.consent_for_ai_processing === true &&
+        ["no_known_conditions","conditions_reported"].includes(healthDeclaration.health_status)
+      );
+      const levelAllowsAiDraft = Boolean(onboarding && onboarding.level_status !== "pending_video_assessment");
+      const profileAllowsAiDraft = Boolean(
+        onboarding?.profile_status === "ready_for_ai_planning" ||
+        (onboarding?.profile_status === "requires_human_review" &&
+         healthDeclaration?.health_status === "conditions_reported" &&
+         healthDeclaration?.consent_for_ai_processing === true)
+      );
+      if (!onboarding || !profileAllowsAiDraft || !levelAllowsAiDraft) {
+        const reason = onboarding?.level_status === "pending_video_assessment"
           ? "Primero completá la evaluación técnica por video y definí el nivel deportivo."
-          : "Primero completá tu evaluación inicial y resolvé los estados pendientes de salud o revisión humana.";
+          : onboarding?.profile_status === "requires_human_review"
+            ? "No se puede generar una propuesta: falta información de salud autorizada o hay datos que requieren revisión humana previa."
+            : "Primero completá tu evaluación inicial.";
         return send(res, 409, { error: reason });
       }
-      if (!healthDeclaration || healthDeclaration.health_status !== "no_known_conditions" ||
-          healthDeclaration.consent_for_ai_processing !== true) {
-        return send(res, 403, { error: "La declaración de salud y su autorización de tratamiento no habilitan todavía la planificación personal con IA." });
+      if (!healthAllowsAiDraft) {
+        return send(res, 403, { error: "No hay una declaración de salud autorizada para el uso de HF Coach IA. Podés solicitar una revisión humana sin compartir esos datos." });
       }
     }
 
