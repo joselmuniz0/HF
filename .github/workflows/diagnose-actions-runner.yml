@@ -1,0 +1,41 @@
+name: Diagnose GitHub Actions runner
+
+on:
+  push:
+    branches: [feature/bar-path-analysis-v1]
+    paths:
+      - '.github/workflows/diagnose-actions-runner.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hf-runner-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runner-smoke:
+    name: Runner allocation smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Confirm runner allocation
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "RUNNER_OS=${RUNNER_OS}"
+          echo "RUNNER_ARCH=${RUNNER_ARCH}"
+          echo "RUNNER_NAME=${RUNNER_NAME}"
+          test "${RUNNER_OS}" = "Linux"
+          test -n "${RUNNER_NAME}"
+          echo "GitHub-hosted runner allocation: OK"
+
+      - name: Check base toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v bash
+          command -v node
+          node --version
+          echo "Base toolchain: OK"
