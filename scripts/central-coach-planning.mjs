@@ -498,7 +498,17 @@ function renderPlanList(weekRows) {
     const athlete = athletes.find(a => a.id === plan.athlete_id);
     const weeks = weekRows.filter(w => w.plan_id === plan.id).sort((a,b) => a.week_number-b.week_number);
     const published = plan.status === "active";
+    const rejected = plan.status === "rejected";
     const aiProposal = plan.status === "draft" && plan.generation_source === "coach_ai_personal";
+    const statusClass = published ? "published" : aiProposal ? "pending-review" : rejected ? "rejected" : "draft";
+    const statusText = published ? "Aprobado y publicado" : aiProposal ? "Propuesta IA · revisión pendiente" : rejected ? "Propuesta rechazada" : "Borrador";
+    const reviewNote = rejected
+      ? "Rechazada el " + dateLabel(plan.reviewed_at) + ". Motivo: " + (plan.rejection_reason || "No informado") + "."
+      : published && plan.generation_source === "coach_ai_personal"
+        ? "Aprobada y publicada el " + dateLabel(plan.reviewed_at || plan.approved_at) + "."
+        : published ? "Visible en el portal del atleta desde " + dateLabel(plan.published_at) + "."
+        : aiProposal ? "Propuesta generada por HF Coach IA. Revisá los datos, las cargas y las alertas antes de resolverla."
+        : "Todavía no es visible para el atleta.";
     return '<article class="cp-plan-card">' +
       '<div class="cp-plan-main"><div><h4>' + esc(plan.name) + '</h4><div class="cp-plan-meta">' +
       esc(athlete?.full_name || "Atleta") + ' · ' + esc(phaseLabel(plan.training_phase)) + ' · ' +
@@ -507,12 +517,12 @@ function renderPlanList(weekRows) {
         '<span class="cp-week-pill">S' + esc(w.week_number) + ' · ' + esc(periodLabel(w.period)) +
         ' · OLY ' + esc(w.oly_repetitions ?? "—") + ' · F ' + esc(w.strength_repetitions ?? "—") +
         ' · Total ' + esc(w.total_repetitions ?? "—") + '</span>').join("") + '</div>' +
-      '</div><span class="cp-status-pill ' + (published ? "published" : aiProposal ? "pending-review" : "draft") + '">' +
-      (published ? "Publicado al atleta" : aiProposal ? "Propuesta IA · revisión pendiente" : "Borrador") + '</span></div>' +
+      '</div><span class="cp-status-pill ' + statusClass + '">' + statusText + '</span></div>' +
       '<div class="cp-plan-actions"><button type="button" class="quiet" data-cp-view="' + esc(plan.id) + '">Ver detalle</button>' +
       (plan.status === "draft" ? '<button type="button" class="primary" data-cp-publish="' + esc(plan.id) + '">' + (aiProposal ? "Aprobar y publicar" : "Publicar al atleta") + '</button>' : '') +
+      (aiProposal ? '<button type="button" class="danger" data-cp-reject="' + esc(plan.id) + '">Rechazar propuesta</button>' : '') +
       '</div><div id="cpDetail-' + esc(plan.id) + '" class="cp-plan-detail" hidden></div>' +
-      '<div class="cp-published-note">' + (published ? "Visible en el portal del atleta desde " + dateLabel(plan.published_at) + "." : aiProposal ? "Propuesta generada por HF Coach IA. Revisá los datos, las cargas y las alertas antes de publicarla." : "Todavía no es visible para el atleta.") + '</div>' +
+      '<div class="cp-published-note">' + esc(reviewNote) + '</div>' +
       '</article>';
   }).join("");
   $("cpPlanList").innerHTML = rows || '<div class="empty">Todavía no hay ciclos de entrenamiento. Creá uno o cargá una plantilla.</div>';
@@ -568,13 +578,43 @@ async function publishPlan(planId) {
     : 'Publicar "' + plan.name + '" para ' + (athlete?.full_name || "el atleta") + '? El plan pasará a estar visible en su portal de HF Coach.';
   if (!window.confirm(prompt)) return;
   try {
-    const result = await client().rpc("publish_training_plan", { p_plan_id:planId });
+    const result = aiProposal
+      ? await client().rpc("review_athlete_ai_plan", { p_plan_id:planId, p_decision:"approve", p_reason:null })
+      : await client().rpc("publish_training_plan", { p_plan_id:planId });
     if (result.error) throw result.error;
-    setStatus("Plan publicado. Ya está disponible en la sección «Mi planificación» del atleta.", "success");
+    setStatus(aiProposal
+      ? "Propuesta aprobada y publicada. El atleta ya puede verla en Mi planificación."
+      : "Plan publicado. Ya está disponible en la sección «Mi planificación» del atleta.", "success");
     await loadPlans();
     await context().refreshCoachData();
   } catch (error) {
     setStatus("No se pudo publicar el plan: " + (error.message || error), "error");
+  }
+}
+async function rejectPlan(planId) {
+  const plan = currentPlans.find(p => p.id === planId);
+  if (!plan || plan.status !== "draft" || plan.generation_source !== "coach_ai_personal") return;
+  const athlete = (context().getAthletes() || []).find(a => a.id === plan.athlete_id);
+  const reason = window.prompt(
+    'Indicá qué debe corregirse antes de volver a generar la planificación de ' +
+    (athlete?.full_name || "el atleta") + '. Este motivo será visible para el atleta:',
+    ''
+  );
+  if (reason === null) return;
+  if (reason.trim().length < 5) {
+    setStatus("Para rechazar la propuesta, indicá un motivo de al menos 5 caracteres.", "error");
+    return;
+  }
+  try {
+    const result = await client().rpc("review_athlete_ai_plan", {
+      p_plan_id:planId,p_decision:"reject",p_reason:reason.trim()
+    });
+    if (result.error) throw result.error;
+    setStatus("Propuesta rechazada. El motivo quedó registrado y se notificó al atleta.", "success");
+    await loadPlans();
+    await context().refreshCoachData();
+  } catch (error) {
+    setStatus("No se pudo rechazar la propuesta: " + (error.message || error), "error");
   }
 }
 function fillAthleteOptions() {
@@ -1052,7 +1092,14 @@ async function submitAthleteAiOnboarding(event) {
     button.textContent="Guardando declaración…";
     setMessage("Registrando datos declarados y estados de validación…","");
     const result=await client().functions.invoke("submit-athlete-ai-onboarding",{body});
-    if(result.error) throw new Error(result.data?.error || result.error.message || "No se pudo guardar la evaluación inicial.");
+    if(result.error) {
+      let serverMessage=result.data?.error || "";
+      const response=result.error.context;
+      if(!serverMessage && response && typeof response.clone==="function") {
+        try { const payload=await response.clone().json(); serverMessage=payload?.error || ""; } catch (_) {}
+      }
+      throw new Error(serverMessage || result.error.message || "No se pudo guardar la evaluación inicial.");
+    }
     if(!result.data?.ok) throw new Error(result.data?.error || "No se confirmó el guardado de la evaluación.");
     setMessage(result.data.message,"success");
     form.dataset.prefilled="false";
@@ -1443,7 +1490,7 @@ async function renderAthletePlans() {
   renderAthleteAiOnboarding();
   renderAthleteAiPlanForm();
   const plans = (d.plans || []).filter(p =>
-    p.status === "active" || (p.status === "draft" && p.generation_source === "coach_ai_personal")
+    p.status === "active" || ((p.status === "draft" || p.status === "rejected") && p.generation_source === "coach_ai_personal")
   ).sort((a,b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
   const notificationMarkup = renderAthleteNotifications((d.notifications || []).filter(n => !n.read_at));
   if (!plans.length) {
@@ -1464,6 +1511,16 @@ async function renderAthletePlans() {
     const weeks = weeksResult.data || [];
     const blocks = blocksResult.data || [];
     $("athletePlans").innerHTML = notificationMarkup + plans.map(plan => {
+      if (plan.status === "rejected") {
+        return '<article class="cp-athlete-plan">' +
+          '<div class="cp-athlete-plan-head"><div><h4>' + esc(plan.name) + '</h4><div class="cp-plan-meta">' +
+          'Propuesta de HF Coach IA · ' + dateLabel(plan.start_date) + '</div></div>' +
+          '<span class="cp-status-pill rejected">No aprobada</span></div>' +
+          '<p class="cp-published-note">Tu coach revisó esta propuesta el ' + dateLabel(plan.reviewed_at) +
+          '. No está aprobada y no debe utilizarse como planificación activa.</p>' +
+          (plan.rejection_reason ? '<p class="cp-plan-notes"><b>Observación del coach:</b> ' + esc(plan.rejection_reason) + '</p>' : '') +
+          '</article>';
+      }
       const planWeeks = weeks.filter(w => w.plan_id === plan.id);
       const planSessions = sessions.filter(s => s.plan_id === plan.id);
       return '<article class="cp-athlete-plan">' +
@@ -1506,7 +1563,7 @@ async function renderAthletePlans() {
   }
 }
 function onCycleClick(event) {
-  const button = event.target.closest("[data-cp-publish], [data-cp-view], [data-cp-notification-read], [data-cp-download]");
+  const button = event.target.closest("[data-cp-publish], [data-cp-reject], [data-cp-view], [data-cp-notification-read], [data-cp-download]");
   if (!button) return;
   if (button.hasAttribute("data-cp-download")) {
     downloadAthletePlanPdf(button.dataset.cpDownload, button).catch(error => {
@@ -1521,7 +1578,8 @@ function onCycleClick(event) {
     });
     return;
   }
-  if (button.hasAttribute("data-cp-publish")) publishPlan(button.dataset.cpPublish);
+  if (button.hasAttribute("data-cp-reject")) rejectPlan(button.dataset.cpReject);
+  else if (button.hasAttribute("data-cp-publish")) publishPlan(button.dataset.cpPublish);
   else viewPlan(button.dataset.cpView);
 }
 function bind() {
