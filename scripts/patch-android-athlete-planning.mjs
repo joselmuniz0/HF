@@ -159,7 +159,7 @@ if (!html.includes('id="hfAthletePlanModal"')) {
     '            var blocks=(item.blocks||[]).map(function(block){return `<div class="hf-plan-prescription">${esc(blockLabel(block))}${block.notes?`<div class="hf-plan-muted">${esc(block.notes)}</div>`:""}</div>`;}).join("");',
     '            return `<div class="hf-plan-exercise"><b>${esc(item.exercise_name_snapshot)}</b>${blocks}${item.notes?`<div class="hf-plan-muted">${esc(item.notes)}</div>`:""}${item.original_notation?`<div class="hf-plan-muted">Notación: ${esc(item.original_notation)}</div>`:""}</div>`;',
     '          }).join("");',
-    '          return `<div class="hf-plan-session"><h5>${esc(session.session_reference||("Día "+session.day_number))} · ${esc(session.session_title)}</h5>${session.scheduled_date?`<div class="hf-plan-muted">${dateLabel(session.scheduled_date)}</div>`:""}${session.focus?`<div class="hf-plan-muted">${esc(session.focus)}</div>`:""}${exercises}${session.notes?`<div class="hf-plan-muted">${esc(session.notes)}</div>`:""}</div>`;
+    '          return `<div class="hf-plan-session"><h5>${esc(session.session_reference||("Día "+session.day_number))} · ${esc(session.session_title)}</h5>${session.scheduled_date?`<div class="hf-plan-muted">${dateLabel(session.scheduled_date)}</div>`:""}${session.focus?`<div class="hf-plan-muted">${esc(session.focus)}</div>`:""}${exercises}${session.notes?`<div class="hf-plan-muted">${esc(session.notes)}</div>`:""}</div>`;',
     '        }).join("");',
     '        return `<section class="hf-plan-week"><h4>Semana ${esc(week.week_number)} · ${esc(week.period||"")}</h4>${week.notes?`<div class="hf-plan-muted">${esc(week.notes)}</div>`:""}${sessions}</section>`;',
     '      }).join("");',
