@@ -7,7 +7,7 @@ let cloud = fs.readFileSync(cloudPath, 'utf8');
 
 // Add a read-only planning entry point to each centrally synchronized athlete card.
 const athleteLevelMarker = ' <span class="tag">${esc(x.level)}</span>';
-const athletePlanButton = '<button type="button" class="hf-athlete-plan-button" data-hf-plan-athlete="\${esc(x.id)}" data-hf-plan-cloudstatus="\${esc(x.cloud_status||"local_only")}">Ver planificación</button>';
+const athletePlanButton = '<button type="button" class="hf-athlete-plan-button" data-hf-plan-athlete="${esc(x.id)}" data-hf-plan-cloudstatus="${esc(x.cloud_status||"local_only")}">Ver planificación</button>';
 if (!html.includes('data-hf-plan-athlete')) {
   if (!html.includes('document.getElementById("athletesList").innerHTML=a.map(x=>')) {
     throw new Error('Android: no se encontró el render de perfiles de atletas.');
