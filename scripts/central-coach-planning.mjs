@@ -944,18 +944,18 @@ function renderAthleteAiOnboarding() {
     const latestRecord = names => (d.records || [])
       .filter(item => names.includes(String(item.exercise_name_snapshot || "").toLowerCase()))
       .sort((a,b) => new Date(b.record_date || b.created_at) - new Date(a.record_date || a.created_at))[0];
-    const put = (id,value) => { const element=$(id); if(element && value!=null && element.value==="") element.value=String(value); };
+    const put = (id,value,force=false) => { const element=$(id); if(element && value!=null && (force || element.value==="")) element.value=String(value); };
     put("athleteAiAge",profile?.declared_age ?? athlete.age);
     put("athleteAiHeight",profile?.height_cm ?? latestMeasurement("height")?.metric_value);
     put("athleteAiWeight",profile?.weight_kg ?? latestMeasurement("body_weight")?.metric_value ?? athlete.body_weight_kg);
     put("athleteAiTrainingYears",profile?.training_years ?? "");
-    put("athleteAiTrainingDays",profile?.training_days_per_week ?? 4);
+    put("athleteAiTrainingDays",profile?.training_days_per_week ?? 4,Boolean(profile));
     put("athleteAiTrainingObjective",profile?.training_objective ?? "");
-    put("athleteAiSnatch",profile?.snatch_kg ?? latestRecord(["snatch","arranque"])?.record_value_kg ?? athlete.snatch_kg);
-    put("athleteAiCleanJerk",profile?.clean_jerk_kg ?? latestRecord(["clean & jerk","clean and jerk","envión"])?.record_value_kg ?? athlete.clean_jerk_kg);
-    put("athleteAiBackSquat",profile?.back_squat_kg ?? latestRecord(["back squat","sentadilla trasera"])?.record_value_kg);
-    put("athleteAiFrontSquat",profile?.front_squat_kg ?? latestRecord(["front squat","sentadilla frontal"])?.record_value_kg);
-    put("athleteAiDeclaredLevel",profile?.declared_level ?? "undetermined");
+    put("athleteAiSnatch",profile ? profile.snatch_kg : (latestRecord(["snatch","arranque"])?.record_value_kg ?? athlete.snatch_kg));
+    put("athleteAiCleanJerk",profile ? profile.clean_jerk_kg : (latestRecord(["clean & jerk","clean and jerk","envión"])?.record_value_kg ?? athlete.clean_jerk_kg));
+    put("athleteAiBackSquat",profile ? profile.back_squat_kg : latestRecord(["back squat","sentadilla trasera"])?.record_value_kg);
+    put("athleteAiFrontSquat",profile ? profile.front_squat_kg : latestRecord(["front squat","sentadilla frontal"])?.record_value_kg);
+    put("athleteAiDeclaredLevel",profile?.declared_level ?? "undetermined",Boolean(profile));
     if(profile) {
       ["Snatch","Clean & Jerk","Back Squat","Front Squat"].forEach((name,index) => {
         const key=["snatch","clean_jerk","back_squat","front_squat"][index];
@@ -964,7 +964,7 @@ function renderAthleteAiOnboarding() {
       });
     }
     if(health) {
-      put("athleteAiHealthStatus",health.health_status);
+      put("athleteAiHealthStatus",health.health_status,true);
       put("athleteAiConditions",health.chronic_conditions);
       put("athleteAiBoneJoint",health.bone_joint_injuries);
       put("athleteAiMuscular",health.muscular_injuries);
