@@ -26,6 +26,8 @@ node scripts/patch-central-athlete-ai-link.mjs
 node --check scripts/patch-central-athlete-ai-link.mjs
 node scripts/patch-central-athlete-ai-planning.mjs
 node --check scripts/patch-central-athlete-ai-planning.mjs
+node scripts/patch-central-athlete-ai-onboarding.mjs
+node --check scripts/patch-central-athlete-ai-onboarding.mjs
 node --check .hf-central/admin/coach-planning.mjs
 node --check .hf-central/admin/cycle-core.mjs
 
@@ -78,6 +80,8 @@ cp supabase/migrations/20261122120000_hf_athlete_email_registration_and_invites.
 cp supabase/migrations/20261123021500_hf_athlete_ai_coach_assignment.sql .hf-central/supabase/migrations/20261123021500_hf_athlete_ai_coach_assignment.sql
 cp supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql .hf-central/supabase/migrations/20261123030000_hf_athlete_ai_owner_fk_fix.sql
 cp supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql .hf-central/supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql
+cp supabase/migrations/20261124090000_hf_athlete_ai_onboarding_and_declarations.sql .hf-central/supabase/migrations/20261124090000_hf_athlete_ai_onboarding_and_declarations.sql
+cp supabase/migrations/20261124100000_fix_hf_athlete_ai_onboarding_validation.sql .hf-central/supabase/migrations/20261124100000_fix_hf_athlete_ai_onboarding_validation.sql
 
 mkdir -p .hf-central/supabase/functions/invite-coach
 cp supabase/functions/invite-coach/index.ts .hf-central/supabase/functions/invite-coach/index.ts
@@ -97,6 +101,8 @@ cp supabase/functions/request-athlete-access/index.ts .hf-central/supabase/funct
 cp supabase/functions/approve-athlete-access/index.ts .hf-central/supabase/functions/approve-athlete-access/index.ts
 mkdir -p .hf-central/supabase/functions/link-athlete-to-ai-coach
 cp supabase/functions/link-athlete-to-ai-coach/index.ts .hf-central/supabase/functions/link-athlete-to-ai-coach/index.ts
+mkdir -p .hf-central/supabase/functions/submit-athlete-ai-onboarding
+cp supabase/functions/submit-athlete-ai-onboarding/index.ts .hf-central/supabase/functions/submit-athlete-ai-onboarding/index.ts
 mkdir -p .hf-central/supabase/functions/create-athlete-invitation
 cp supabase/functions/create-athlete-invitation/index.ts .hf-central/supabase/functions/create-athlete-invitation/index.ts
 
@@ -159,6 +165,17 @@ grep -q "status = 'draft'" .hf-central/supabase/migrations/20261123040000_hf_ath
 grep -q "athletes read own personal AI plan proposals" .hf-central/supabase/migrations/20261123040000_hf_athlete_ai_plan_proposals.sql
 grep -q 'athleteAiPlanForm' .hf-central/admin/index.html
 grep -q 'saved_plan_id' .hf-central/admin/coach-planning.mjs
+grep -q 'submitAthleteAiOnboarding' .hf-central/admin/coach-planning.mjs
+grep -q 'ready_for_ai_planning' .hf-central/admin/coach-planning.mjs
+grep -q 'submit-athlete-ai-onboarding' .hf-central/admin/coach-planning.mjs
+grep -q 'athleteAiOnboardingPanel' .hf-central/admin/index.html
+grep -q 'athlete_health_declarations' .hf-central/admin/app.js
+grep -q 'athlete_ai_onboarding' .hf-central/admin/app.js
+grep -q 'DECLARATION_VERSION' supabase/functions/submit-athlete-ai-onboarding/index.ts
+test -f .hf-central/supabase/functions/submit-athlete-ai-onboarding/index.ts
+test -f .hf-central/supabase/migrations/20261124090000_hf_athlete_ai_onboarding_and_declarations.sql
+test -f .hf-central/supabase/migrations/20261124100000_fix_hf_athlete_ai_onboarding_validation.sql
+echo "HF athlete sworn onboarding, health-data and readiness gates checks passed."
 grep -q 'downloadAthletePlanPdf' .hf-central/admin/coach-planning.mjs
 grep -q 'data-cp-download' .hf-central/admin/coach-planning.mjs
 grep -q 'jspdf@4.2.1/dist/jspdf.umd.min.js' .hf-central/admin/coach-planning.mjs
