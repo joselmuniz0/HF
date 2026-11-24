@@ -7,7 +7,7 @@ let cloud = fs.readFileSync(cloudPath, 'utf8');
 
 // Add a read-only planning entry point to each centrally synchronized athlete card.
 const athleteLevelMarker = ' <span class="tag">${esc(x.level)}</span>';
-const athletePlanButton = '${x.cloud_status==="local_only"?"":\'<button type="button" class="hf-athlete-plan-button" data-hf-plan-athlete="\'+esc(x.id)+\'">Ver planificación</button>\'}';
+const athletePlanButton = '\'<button type="button" class="hf-athlete-plan-button" data-hf-plan-athlete="\'+esc(x.id)+'" data-hf-plan-cloudstatus="\'+esc(x.cloud_status||"local_only")+'">Ver planificación</button>\'';
 if (!html.includes('data-hf-plan-athlete')) {
   if (!html.includes('document.getElementById("athletesList").innerHTML=a.map(x=>')) {
     throw new Error('Android: no se encontró el render de perfiles de atletas.');
@@ -16,6 +16,18 @@ if (!html.includes('data-hf-plan-athlete')) {
     throw new Error('Android: no se encontró el marcador de nivel dentro de la ficha de atleta.');
   }
   html = html.replace(athleteLevelMarker, athleteLevelMarker + athletePlanButton);
+}
+
+
+const athletePane = '<section id="atletas" class="pane" hidden>';
+const listPlaceholder = '<div id="athletesList"></div>';
+if (!html.includes('hf-athlete-roster')) {
+  if (!html.includes(athletePane) || html.split(listPlaceholder).length !== 2) {
+    throw new Error('Android: no se pudo ubicar la lista de atletas para mostrarla antes del formulario.');
+  }
+  html = html.replace(listPlaceholder, '');
+  const roster = '<div class="card hf-athlete-roster"><h2>Atletas registrados</h2><p class="mut">Consultá la planificación enviada por el coach desde cada ficha.</p>' + listPlaceholder + '</div>';
+  html = html.replace(athletePane, athletePane + '\n' + roster);
 }
 
 // Read only active, published plans through the user's authenticated Supabase session.
@@ -100,6 +112,9 @@ if (!html.includes('id="hfAthletePlanModal"')) {
     '<style id="hf-athlete-planning-view-style">',
     '.hf-athlete-plan-button{display:inline-flex;align-items:center;justify-content:center;margin:8px 6px 2px 0;padding:8px 12px;border:1px solid #9db2a5;border-radius:8px;background:#eef5f0;color:#234333;font-size:12px;font-weight:700;cursor:pointer}',
     '.hf-athlete-plan-button:disabled{opacity:.55;cursor:wait}',
+    '.hf-athlete-roster{margin-bottom:12px}',
+    '.hf-athlete-roster>h2{margin-bottom:6px}',
+    '.hf-athlete-roster>p{margin:0 0 10px;font-size:12px;color:#66736b}',
     '#hfAthletePlanModal{display:none;position:fixed;inset:0;z-index:10020;background:rgba(12,20,24,.72);padding:12px;box-sizing:border-box}',
     '#hfAthletePlanModal.open{display:flex;align-items:center;justify-content:center}',
     '#hfAthletePlanDialog{width:min(760px,100%);max-height:92dvh;overflow:auto;background:#f7f8f7;color:#20282e;border-radius:14px;box-shadow:0 18px 60px #0006}',
@@ -171,6 +186,8 @@ if (!html.includes('id="hfAthletePlanModal"')) {
     '    content.innerHTML="";status.textContent="Consultando planificaciones publicadas…";',
     '    if(button){button.disabled=true;button.textContent="Cargando…";}',
     '    try{',
+    '      var cloudStatus=button&&button.getAttribute("data-hf-plan-cloudstatus");',
+    '      if(cloudStatus==="local_only"){status.textContent="Esta ficha todavía está guardada solo en este dispositivo. Ingresá en Intercambio, configurá la conexión con HF Coach Central, iniciá sesión y pulsá «Actualizar atletas». Después podrás consultar la planificación publicada.";return;}',
     '      if(!window.HFCloud||typeof window.HFCloud.getPublishedTrainingPlans!=="function") throw new Error("No está disponible la conexión con HF Coach Central. Actualizá la aplicación.");',
     '      var plans=await window.HFCloud.getPublishedTrainingPlans(athleteId);renderPlans(plans);',
     '    }catch(error){status.textContent="No se pudo cargar la planificación: "+(error&&error.message?error.message:String(error));}',
@@ -188,7 +205,7 @@ if (!html.includes('id="hfAthletePlanModal"')) {
   html = html.replace('</body>', modal + '\n</body>');
 }
 
-if (!cloud.includes('getPublishedTrainingPlans') || !html.includes('data-hf-plan-athlete') || !html.includes('hfAthletePlanModal')) {
+if (!cloud.includes('getPublishedTrainingPlans') || !html.includes('data-hf-plan-athlete') || !html.includes('data-hf-plan-cloudstatus') || !html.includes('hf-athlete-roster') || !html.includes('hfAthletePlanModal')) {
   throw new Error('Android: no quedaron instaladas todas las funciones para consultar planes.');
 }
 fs.writeFileSync(htmlPath, html, 'utf8');
