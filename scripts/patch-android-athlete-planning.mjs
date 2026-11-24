@@ -81,7 +81,7 @@ const cloudAddition = [
   '  }',
   '  const weeks = weeksResult.data || [];',
   '  const weekMap = new Map(weeks.map(week => [String(week.plan_id)+":"+String(week.week_number), week]));',
-  for (const session of sessions) {
+  '  for (const session of sessions) {',
   '    const key = String(session.plan_id)+":"+String(session.week_number);',
   '    if (!weekMap.has(key)) weekMap.set(key, { plan_id: session.plan_id, week_number: Number(session.week_number)||1, period: "preparatorio", notes: "" });',
   '  }',
