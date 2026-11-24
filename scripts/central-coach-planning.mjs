@@ -1010,6 +1010,237 @@ async function markNotificationRead(notificationId) {
   notification.read_at = readAt;
   renderAthletePlans();
 }
+let jsPdfLoaderPromise = null;
+
+function loadJsPdf() {
+  if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+  if (jsPdfLoaderPromise) return jsPdfLoaderPromise;
+  jsPdfLoaderPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/jspdf@4.2.1/dist/jspdf.umd.min.js";
+    script.async = true;
+    script.onload = () => {
+      const PdfConstructor = window.jspdf && window.jspdf.jsPDF;
+      if (PdfConstructor) resolve(PdfConstructor);
+      else reject(new Error("El generador PDF se cargó, pero no quedó disponible."));
+    };
+    script.onerror = () => {
+      jsPdfLoaderPromise = null;
+      reject(new Error("No se pudo cargar el generador PDF. Revisá la conexión e intentá nuevamente."));
+    };
+    document.head.appendChild(script);
+  });
+  return jsPdfLoaderPromise;
+}
+
+function cleanPdfText(value) {
+  return String(value == null ? "" : value)
+    .replace(/\\\\n/g, "\\n")
+    .replace(/\\r/g, "")
+    .replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g, " ")
+    .replace(/[–—]/g, "-")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/·/g, "|")
+    .trim();
+}
+
+async function downloadAthletePlanPdf(planId, button) {
+  const d = context()?.getAthletePortalData?.() || {};
+  const plan = (d.plans || []).find(item => item.id === planId);
+  const athlete = d.athlete;
+  if (!plan || !athlete?.id || plan.athlete_id !== athlete.id) {
+    throw new Error("No se encontró esta planificación en tu historia deportiva.");
+  }
+  const isOwnAiDraft = plan.status === "draft" && plan.generation_source === "coach_ai_personal";
+  if (plan.status !== "active" && !isOwnAiDraft) {
+    throw new Error("Esta planificación todavía no está disponible para descarga.");
+  }
+
+  const originalText = button?.textContent || "Descargar PDF";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Preparando PDF…";
+  }
+  try {
+    const [weeksResult, sessionsResult] = await Promise.all([
+      client().from("training_plan_weeks").select("*").eq("plan_id", planId).order("week_number"),
+      client().from("training_plan_sessions").select("*").eq("plan_id", planId).order("week_number").order("day_number").order("session_order")
+    ]);
+    if (weeksResult.error) throw weeksResult.error;
+    if (sessionsResult.error) throw sessionsResult.error;
+    const sessions = sessionsResult.data || [];
+    if (!sessions.length) throw new Error("La planificación no contiene sesiones para exportar.");
+
+    const sessionIds = sessions.map(item => item.id);
+    const itemsResult = await client().from("training_plan_items")
+      .select("*").in("plan_session_id", sessionIds).order("sequence_number");
+    if (itemsResult.error) throw itemsResult.error;
+    const items = itemsResult.data || [];
+    const itemIds = items.map(item => item.id);
+    const blocksResult = itemIds.length
+      ? await client().from("training_plan_item_blocks").select("*").in("plan_item_id", itemIds).order("sequence_number")
+      : { data:[], error:null };
+    if (blocksResult.error) throw blocksResult.error;
+    const blocks = blocksResult.data || [];
+
+    const jsPDF = await loadJsPdf();
+    const pdf = new jsPDF({ orientation:"portrait", unit:"mm", format:"a4", compress:true });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 16;
+    const contentWidth = pageWidth - margin * 2;
+    const bottomLimit = pageHeight - 17;
+    let y = 18;
+
+    const ensureSpace = (height) => {
+      if (y + height > bottomLimit) {
+        pdf.addPage();
+        y = 18;
+      }
+    };
+    const writeLine = (text, options = {}) => {
+      const size = options.size || 9.5;
+      const font = options.font || "normal";
+      const color = options.color || [48, 56, 59];
+      const indent = options.indent || 0;
+      const width = contentWidth - indent;
+      const lineHeight = size * 0.48;
+      const lines = pdf.splitTextToSize(cleanPdfText(text), width);
+      pdf.setFont("helvetica", font);
+      pdf.setFontSize(size);
+      pdf.setTextColor(color[0], color[1], color[2]);
+      for (const line of lines) {
+        ensureSpace(lineHeight + 0.5);
+        pdf.text(line, margin + indent, y);
+        y += lineHeight;
+      }
+      y += options.gapAfter == null ? 1.5 : options.gapAfter;
+    };
+    const sectionHeading = (text) => {
+      ensureSpace(11);
+      pdf.setFillColor(239, 243, 240);
+      pdf.roundedRect(margin, y - 4, contentWidth, 8, 1.5, 1.5, "F");
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(10);
+      pdf.setTextColor(35, 47, 53);
+      pdf.text(cleanPdfText(text), margin + 3, y + 1.2);
+      y += 9;
+    };
+    const phase = phaseLabel(plan.training_phase);
+    const statusLabel = isOwnAiDraft
+      ? "PROPUESTA IA - PENDIENTE DE REVISION HUMANA"
+      : "PLANIFICACION PUBLICADA";
+    const dateRange = dateLabel(plan.start_date) +
+      (plan.end_date ? " - " + dateLabel(plan.end_date) : "");
+
+    pdf.setFillColor(32, 40, 46);
+    pdf.rect(0, 0, pageWidth, 34, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.setTextColor(237, 177, 178);
+    pdf.text("HF COACH", margin, 11);
+    pdf.setFontSize(17);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text("Planificación de entrenamiento", margin, 21);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(9);
+    pdf.setTextColor(226, 232, 235);
+    pdf.text(cleanPdfText(athlete.full_name || "Atleta"), margin, 28);
+    y = 43;
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(9);
+    pdf.setTextColor(isOwnAiDraft ? 137 : 45, isOwnAiDraft ? 103 : 103, isOwnAiDraft ? 34 : 66);
+    const statusLines = pdf.splitTextToSize(statusLabel, contentWidth);
+    pdf.text(statusLines, margin, y);
+    y += statusLines.length * 4.5 + 2;
+
+    writeLine(cleanPdfText(plan.name), { size:14, font:"bold", color:[32, 40, 46], gapAfter:2 });
+    writeLine("Período: " + dateRange + " | Fase: " + phase, { size:9, color:[90, 101, 106] });
+    if (plan.objective) writeLine("Objetivo: " + plan.objective, { size:9.5 });
+    if (plan.athlete_level != null) writeLine("Nivel de planificación: " + plan.athlete_level, { size:9 });
+    if (isOwnAiDraft) {
+      writeLine("Esta propuesta todavía no está aprobada ni publicada. No reemplaza una planificación activa; su contenido requiere revisión humana antes de aplicarse.", {
+        size:9, font:"bold", color:[126, 83, 29], gapAfter:3
+      });
+    }
+
+    const orderedWeeks = (weeksResult.data || []).slice().sort((a,b) => Number(a.week_number) - Number(b.week_number));
+    orderedWeeks.forEach(week => {
+      sectionHeading("Microciclo " + week.week_number + " | " + periodLabel(week.period));
+      writeLine(
+        "Volumen planificado: OLY " + (week.oly_repetitions ?? "-") +
+        " | Fuerza " + (week.strength_repetitions ?? "-") +
+        " | Total " + (week.total_repetitions ?? "-"),
+        { size:9, font:"bold", color:[71, 91, 79] }
+      );
+      if (week.notes) writeLine(week.notes, { size:8.5, color:[89, 99, 104] });
+      const weekSessions = sessions.filter(session => Number(session.week_number) === Number(week.week_number));
+      weekSessions.forEach(session => {
+        const sessionDate = session.scheduled_date ? " | " + dateLabel(session.scheduled_date) : "";
+        sectionHeading(
+          (session.session_reference || ("Día " + session.day_number)) +
+          " - " + session.session_title + sessionDate
+        );
+        if (session.focus) writeLine("Enfoque: " + session.focus, { size:9, font:"bold" });
+        if (session.notes) writeLine(session.notes, { size:8.5, color:[89, 99, 104] });
+        const sessionItems = items.filter(item => item.plan_session_id === session.id)
+          .sort((a,b) => Number(a.sequence_number) - Number(b.sequence_number));
+        sessionItems.forEach((item, index) => {
+          const label = (index + 1) + ". " + item.exercise_name_snapshot;
+          writeLine(label, { size:9.5, font:"bold", gapAfter:0.5 });
+          if (item.group_label) writeLine("Agrupación: " + item.group_label, { size:8, color:[94, 105, 110], indent:3, gapAfter:0.5 });
+          if (item.original_notation) writeLine("Notación: " + item.original_notation, { size:8, color:[94, 105, 110], indent:3, gapAfter:0.5 });
+          const itemBlocks = blocks.filter(block => block.plan_item_id === item.id)
+            .sort((a,b) => Number(a.sequence_number) - Number(b.sequence_number));
+          itemBlocks.forEach((block, blockIndex) => {
+            const prescription = formatPrescriptionBlock(block);
+            const details = [
+              "Bloque " + (blockIndex + 1) + ": " + prescription,
+              block.rest_seconds != null ? "Descanso " + block.rest_seconds + " s" : "",
+              block.tempo ? "Tempo " + block.tempo : "",
+              block.intensity_type === "none" ? "Sin carga externa" : ""
+            ].filter(Boolean).join(" | ");
+            writeLine(details, { size:8.5, indent:4, gapAfter:0.5 });
+            if (block.notes) writeLine("Nota: " + block.notes, { size:8, indent:7, color:[89, 99, 104], gapAfter:0.5 });
+          });
+          if (item.notes) writeLine("Indicaciones: " + item.notes, { size:8, indent:4, color:[89, 99, 104], gapAfter:1.5 });
+        });
+        y += 2;
+      });
+    });
+
+    if (plan.notes) {
+      sectionHeading(isOwnAiDraft ? "Revisión y observaciones de Coach IA" : "Observaciones");
+      writeLine(plan.notes, { size:8.5, color:[76, 86, 91] });
+    }
+
+    const pageCount = pdf.getNumberOfPages();
+    for (let page = 1; page <= pageCount; page += 1) {
+      pdf.setPage(page);
+      pdf.setDrawColor(218, 224, 220);
+      pdf.line(margin, pageHeight - 13, pageWidth - margin, pageHeight - 13);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.setTextColor(112, 122, 126);
+      pdf.text("HF Coach | " + cleanPdfText(athlete.full_name || "Atleta"), margin, pageHeight - 8);
+      pdf.text("Página " + page + " de " + pageCount, pageWidth - margin, pageHeight - 8, { align:"right" });
+    }
+
+    const safeName = cleanPdfText(athlete.full_name || "atleta")
+      .normalize("NFD").replace(/[\\u0300-\\u036f]/g, "")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "atleta";
+    const fileDate = String(plan.start_date || new Date().toISOString().slice(0,10));
+    pdf.save("HF-Coach-" + safeName + "-" + fileDate + ".pdf");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+}
+
 async function renderAthletePlans() {
   const c = context();
   if (!c || !c.getAthletePortalData) return;
@@ -1071,6 +1302,7 @@ async function renderAthletePlans() {
             }).join("") + (week.notes ? '<small>' + esc(week.notes) + '</small>' : '') + '</section>';
         }).join("") +
         (plan.notes ? '<p class="cp-plan-notes">' + esc(plan.notes) + '</p>' : '') +
+        '<div class="cp-plan-actions"><button type="button" class="quiet" data-cp-download="' + esc(plan.id) + '">Descargar PDF</button></div>' +
         '</article>';
     }).join("");
   } catch (error) {
@@ -1078,8 +1310,15 @@ async function renderAthletePlans() {
   }
 }
 function onCycleClick(event) {
-  const button = event.target.closest("[data-cp-publish], [data-cp-view], [data-cp-notification-read]");
+  const button = event.target.closest("[data-cp-publish], [data-cp-view], [data-cp-notification-read], [data-cp-download]");
   if (!button) return;
+  if (button.hasAttribute("data-cp-download")) {
+    downloadAthletePlanPdf(button.dataset.cpDownload, button).catch(error => {
+      $("athletePlans").insertAdjacentHTML("afterbegin",
+        '<div class="status error">No se pudo descargar el PDF: ' + esc(error.message || error) + '</div>');
+    });
+    return;
+  }
   if (button.hasAttribute("data-cp-notification-read")) {
     markNotificationRead(button.dataset.cpNotificationRead).catch(error => {
       $("athletePlans").insertAdjacentHTML("afterbegin", '<div class="status error">No se pudo marcar el aviso como leído: ' + esc(error.message || error) + '</div>');
