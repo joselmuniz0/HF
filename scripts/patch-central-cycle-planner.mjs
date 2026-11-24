@@ -101,6 +101,8 @@ css+="\n"+
 css+="\n"+
 ".cp-ai-import{border:1px solid #dce4df;border-radius:8px;padding:12px;margin:12px 0;background:#fff}.cp-ai-import summary{cursor:pointer;font-weight:600}.cp-ai-import p{font-size:12px;color:#68747b}.cp-ai-import textarea{width:100%;min-height:140px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;margin:8px 0;box-sizing:border-box}";
 css+="\n"+".cp-ai-confirm{display:flex;align-items:flex-start;gap:8px;font-size:12px;margin:8px 0 12px}.cp-ai-confirm input{margin-top:2px}";
+css+="\n"+
+".cp-status-pill.rejected{background:#fbeceb;color:#9a2b27}.cp-plan-actions .danger{border:1px solid #c63a32;color:#a42e27;background:#fff}.cp-plan-actions .danger:hover{background:#fff4f3}.cp-plan-card .cp-published-note{white-space:pre-line}";
 fs.writeFileSync(cssPath,css,"utf8");
 fs.copyFileSync(modulePath,path.join(dir,"coach-planning.mjs"));
 fs.copyFileSync(corePath,path.join(dir,"cycle-core.mjs"));
