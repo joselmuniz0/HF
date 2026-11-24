@@ -948,13 +948,13 @@ function renderAthleteAiOnboarding() {
     put("athleteAiHeight",profile?.height_cm ?? latestMeasurement("height")?.metric_value);
     put("athleteAiWeight",profile?.weight_kg ?? latestMeasurement("body_weight")?.metric_value ?? athlete.body_weight_kg);
     put("athleteAiTrainingYears",profile?.training_years ?? "");
-    put("athleteAiTrainingDays",profile?.training_days_per_week ?? 4,Boolean(profile));
+    put("athleteAiTrainingDays",profile?.training_days_per_week,Boolean(profile));
     put("athleteAiTrainingObjective",profile?.training_objective ?? "");
     put("athleteAiSnatch",profile ? profile.snatch_kg : (latestRecord(["snatch","arranque"])?.record_value_kg ?? athlete.snatch_kg));
     put("athleteAiCleanJerk",profile ? profile.clean_jerk_kg : (latestRecord(["clean & jerk","clean and jerk","envión"])?.record_value_kg ?? athlete.clean_jerk_kg));
     put("athleteAiBackSquat",profile ? profile.back_squat_kg : latestRecord(["back squat","sentadilla trasera"])?.record_value_kg);
     put("athleteAiFrontSquat",profile ? profile.front_squat_kg : latestRecord(["front squat","sentadilla frontal"])?.record_value_kg);
-    put("athleteAiDeclaredLevel",profile?.declared_level ?? "undetermined",Boolean(profile));
+    put("athleteAiDeclaredLevel",profile?.declared_level,Boolean(profile));
     if(profile) {
       ["Snatch","Clean & Jerk","Back Squat","Front Squat"].forEach((name,index) => {
         const key=["snatch","clean_jerk","back_squat","front_squat"][index];
