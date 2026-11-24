@@ -902,6 +902,168 @@ async function refresh() {
     setStatus("No se pudo actualizar la planificación: " + (error.message || error), "error");
   }
 }
+function setAthleteAiHealthFields() {
+  const status = $("athleteAiHealthStatus")?.value;
+  const details = $("athleteAiHealthDetails");
+  const consent = $("athleteAiHealthConsent");
+  if (details) details.hidden = status !== "conditions_reported";
+  if (consent) {
+    consent.disabled = status === "prefer_not_to_disclose";
+    if (status === "prefer_not_to_disclose") consent.checked = false;
+  }
+}
+function setAthleteAiRmFields() {
+  [
+    ["athleteAiSnatch","athleteAiSnatchNotTested"],
+    ["athleteAiCleanJerk","athleteAiCleanJerkNotTested"],
+    ["athleteAiBackSquat","athleteAiBackSquatNotTested"],
+    ["athleteAiFrontSquat","athleteAiFrontSquatNotTested"]
+  ].forEach(([inputId,checkId]) => {
+    const input = $(inputId), check = $(checkId);
+    if (!input || !check) return;
+    input.disabled = check.checked;
+    if (check.checked) input.value = "";
+  });
+}
+function renderAthleteAiOnboarding() {
+  const panel = $("athleteAiOnboardingPanel");
+  if (!panel) return;
+  const d = context()?.getAthletePortalData?.() || {};
+  const linked = d.aiCoach?.status === "active" && d.aiCoach?.coach_label === "HF Coach IA";
+  const ready = d.aiOnboarding?.profile_status === "ready_for_ai_planning";
+  panel.hidden = !linked || !ready;
+  if (!linked || !ready) return;
+  const profile = d.aiOnboarding || null;
+  const health = d.healthDeclaration || null;
+  const form = $("athleteAiOnboardingForm");
+  if (form && form.dataset.prefilled !== "true") {
+    const athlete = d.athlete || {};
+    const latestMeasurement = key => (d.measurements || [])
+      .filter(item => item.metric_key === key)
+      .sort((a,b) => new Date(b.measured_at || b.created_at) - new Date(a.measured_at || a.created_at))[0];
+    const latestRecord = names => (d.records || [])
+      .filter(item => names.includes(String(item.exercise_name_snapshot || "").toLowerCase()))
+      .sort((a,b) => new Date(b.record_date || b.created_at) - new Date(a.record_date || a.created_at))[0];
+    const put = (id,value) => { const element=$(id); if(element && value!=null && element.value==="") element.value=String(value); };
+    put("athleteAiAge",profile?.declared_age ?? athlete.age);
+    put("athleteAiHeight",profile?.height_cm ?? latestMeasurement("height")?.metric_value);
+    put("athleteAiWeight",profile?.weight_kg ?? latestMeasurement("body_weight")?.metric_value ?? athlete.body_weight_kg);
+    put("athleteAiTrainingYears",profile?.training_years ?? "");
+    put("athleteAiTrainingDays",profile?.training_days_per_week ?? 4);
+    put("athleteAiTrainingObjective",profile?.training_objective ?? "");
+    put("athleteAiSnatch",profile?.snatch_kg ?? latestRecord(["snatch","arranque"])?.record_value_kg ?? athlete.snatch_kg);
+    put("athleteAiCleanJerk",profile?.clean_jerk_kg ?? latestRecord(["clean & jerk","clean and jerk","envión"])?.record_value_kg ?? athlete.clean_jerk_kg);
+    put("athleteAiBackSquat",profile?.back_squat_kg ?? latestRecord(["back squat","sentadilla trasera"])?.record_value_kg);
+    put("athleteAiFrontSquat",profile?.front_squat_kg ?? latestRecord(["front squat","sentadilla frontal"])?.record_value_kg);
+    put("athleteAiDeclaredLevel",profile?.declared_level ?? "undetermined");
+    if(profile) {
+      ["Snatch","Clean & Jerk","Back Squat","Front Squat"].forEach((name,index) => {
+        const key=["snatch","clean_jerk","back_squat","front_squat"][index];
+        const check=$("athleteAi"+(key==="clean_jerk"?"CleanJerk":key==="back_squat"?"BackSquat":key==="front_squat"?"FrontSquat":"Snatch")+"NotTested");
+        if(check) check.checked=profile[key+"_not_tested"]===true;
+      });
+    }
+    if(health) {
+      put("athleteAiHealthStatus",health.health_status);
+      put("athleteAiConditions",health.chronic_conditions);
+      put("athleteAiBoneJoint",health.bone_joint_injuries);
+      put("athleteAiMuscular",health.muscular_injuries);
+      put("athleteAiSurgeries",health.surgeries);
+      put("athleteAiMedication",health.medication_and_treatments);
+      put("athleteAiRestrictions",health.medical_restrictions);
+      put("athleteAiOtherHealth",health.other_relevant_history);
+      const consent=$("athleteAiHealthConsent");
+      if(consent) consent.checked=health.consent_for_ai_processing===true;
+    }
+    form.dataset.prefilled="true";
+  }
+  const status=profile?.profile_status || "incomplete";
+  const badge=$("athleteAiOnboardingBadge");
+  if(badge) {
+    badge.textContent=status==="ready_for_ai_planning"?"Datos declarados":status==="needs_video_assessment"?"Requiere video":status==="requires_human_review"?"Revisión humana":"Pendiente";
+    badge.className="cp-status-pill "+(status==="ready_for_ai_planning"?"published":status==="needs_video_assessment"||status==="requires_human_review"?"pending-review":"draft");
+  }
+  const setState=(id,value)=>{const el=$(id);if(el)el.textContent=value;};
+  setState("athleteAiPersonalState",profile?"Declarados por atleta":"Pendientes");
+  setState("athleteAiHealthState",health?.health_status==="no_known_conditions"&&health?.consent_for_ai_processing?"Declarada y autorizada":health?.health_status==="conditions_reported"?"Declarada · revisión humana":health?.health_status==="prefer_not_to_disclose"?"No informada":"Pendiente");
+  setState("athleteAiSportState",profile?"Declaradas · validación pendiente":"Pendientes");
+  setState("athleteAiLevelState",profile?.level_status==="athlete_declared"?"Declarado por atleta":profile?.level_status==="pending_video_assessment"?"Pendiente de video":"Pendiente");
+  const message=$("athleteAiOnboardingStatus");
+  if(message) {
+    if(status==="ready_for_ai_planning") message.textContent="Perfil completo para generar propuestas. Tu nivel es autodeclarado; marcas y medidas siguen pendientes de validación.";
+    else if(status==="needs_video_assessment") message.textContent="Falta la evaluación técnica por video para definir el nivel. La generación de un plan personal permanece bloqueada.";
+    else if(status==="requires_human_review") message.textContent="La declaración de salud requiere revisión humana o no fue autorizada para su tratamiento por HF Coach IA. No se generará una planificación individualizada hasta resolverlo.";
+    else message.textContent="Completá todos los datos, declarando una RM vigente o indicando que no tenés RM para cada levantamiento.";
+  }
+  if($("athleteAiHealthStatus")) setAthleteAiHealthFields();
+  setAthleteAiRmFields();
+}
+async function submitAthleteAiOnboarding(event) {
+  event.preventDefault();
+  const form=$("athleteAiOnboardingForm");
+  const button=$("athleteAiOnboardingSubmit");
+  const status=$("athleteAiOnboardingResult");
+  const originalText=button?.textContent || "Guardar evaluación y declaración";
+  const setMessage=(message,kind)=>{if(status){status.textContent=message;status.className="status "+(kind||"");}};
+  try {
+    const c=requireContext();
+    const d=c.getAthletePortalData()||{};
+    if(!d.athlete?.id || d.aiCoach?.status!=="active") throw new Error("No encontramos una vinculación activa con HF Coach IA.");
+    if(!$("athleteAiAcceptDeclaration").checked) throw new Error("Debés aceptar la declaración jurada.");
+    const rm=(valueId,checkId)=>({
+      value:$(valueId).value.trim(),
+      notTested:$(checkId).checked
+    });
+    const snatch=rm("athleteAiSnatch","athleteAiSnatchNotTested");
+    const cleanJerk=rm("athleteAiCleanJerk","athleteAiCleanJerkNotTested");
+    const backSquat=rm("athleteAiBackSquat","athleteAiBackSquatNotTested");
+    const frontSquat=rm("athleteAiFrontSquat","athleteAiFrontSquatNotTested");
+    for(const [label,item] of [["Snatch",snatch],["Clean & Jerk",cleanJerk],["Back Squat",backSquat],["Front Squat",frontSquat]]) {
+      if((!item.value && !item.notTested)||(item.value && item.notTested)) throw new Error(label+": ingresá una RM o marcá que no tenés una vigente.");
+    }
+    const healthStatus=$("athleteAiHealthStatus").value;
+    const consent=healthStatus==="prefer_not_to_disclose"?false:$("athleteAiHealthConsent").checked;
+    if(healthStatus!=="prefer_not_to_disclose"&&!consent) throw new Error("Autorizá el tratamiento de los datos de salud declarados o elegí no informar antecedentes y solicitar revisión humana.");
+    const body={
+      accept_declaration:true,
+      age:$("athleteAiAge").value,
+      height_cm:$("athleteAiHeight").value,
+      weight_kg:$("athleteAiWeight").value,
+      training_years:$("athleteAiTrainingYears").value,
+      training_days_per_week:$("athleteAiTrainingDays").value,
+      training_objective:$("athleteAiTrainingObjective").value.trim(),
+      declared_level:$("athleteAiDeclaredLevel").value,
+      snatch_kg:snatch.value,snatch_not_tested:snatch.notTested,
+      clean_jerk_kg:cleanJerk.value,clean_jerk_not_tested:cleanJerk.notTested,
+      back_squat_kg:backSquat.value,back_squat_not_tested:backSquat.notTested,
+      front_squat_kg:frontSquat.value,front_squat_not_tested:frontSquat.notTested,
+      health_status:healthStatus,
+      consent_for_ai_processing:consent,
+      chronic_conditions:$("athleteAiConditions").value,
+      bone_joint_injuries:$("athleteAiBoneJoint").value,
+      muscular_injuries:$("athleteAiMuscular").value,
+      surgeries:$("athleteAiSurgeries").value,
+      medication_and_treatments:$("athleteAiMedication").value,
+      medical_restrictions:$("athleteAiRestrictions").value,
+      other_relevant_history:$("athleteAiOtherHealth").value
+    };
+    button.disabled=true;
+    button.textContent="Guardando declaración…";
+    setMessage("Registrando datos declarados y estados de validación…","");
+    const result=await client().functions.invoke("submit-athlete-ai-onboarding",{body});
+    if(result.error) throw new Error(result.data?.error || result.error.message || "No se pudo guardar la evaluación inicial.");
+    if(!result.data?.ok) throw new Error(result.data?.error || "No se confirmó el guardado de la evaluación.");
+    setMessage(result.data.message,"success");
+    form.dataset.prefilled="false";
+    await c.refreshAthletePortalData();
+    renderAthleteAiOnboarding();
+    renderAthleteAiPlanForm();
+  } catch(error) {
+    setMessage(error.message||String(error),"error");
+  } finally {
+    if(button){button.disabled=false;button.textContent=originalText;}
+  }
+}
 function renderAthleteAiPlanForm() {
   const panel = $("athleteAiPlanPanel");
   if (!panel) return;
@@ -932,6 +1094,9 @@ async function submitAthleteAiPlan(event) {
     const athlete = d.athlete;
     if (!athlete?.id || d.aiCoach?.status !== "active") {
       throw new Error("No encontramos una vinculación activa de tu cuenta con HF Coach IA.");
+    }
+    if (d.aiOnboarding?.profile_status !== "ready_for_ai_planning") {
+      throw new Error("Antes de planificar, completá la evaluación inicial y resolvé los estados pendientes de salud o nivel.");
     }
     const trainingDays = Array.from(form.querySelectorAll("[data-athlete-ai-day]:checked"))
       .map(input => Number(input.value)).sort((a,b) => a-b);
@@ -1257,6 +1422,7 @@ async function renderAthletePlans() {
   const c = context();
   if (!c || !c.getAthletePortalData) return;
   const d = c.getAthletePortalData() || {};
+  renderAthleteAiOnboarding();
   renderAthleteAiPlanForm();
   const plans = (d.plans || []).filter(p =>
     p.status === "active" || (p.status === "draft" && p.generation_source === "coach_ai_personal")
@@ -1383,6 +1549,13 @@ function bind() {
   $("cpPlanList").addEventListener("click", onCycleClick);
   $("athletePlans").addEventListener("click", onCycleClick);
   if ($("athleteAiPlanForm")) $("athleteAiPlanForm").addEventListener("submit", submitAthleteAiPlan);
+  if ($("athleteAiOnboardingForm")) {
+    $("athleteAiOnboardingForm").addEventListener("submit", submitAthleteAiOnboarding);
+    $("athleteAiOnboardingForm").addEventListener("change", event => {
+      if (event.target.id === "athleteAiHealthStatus") setAthleteAiHealthFields();
+      if (event.target.matches("#athleteAiSnatchNotTested,#athleteAiCleanJerkNotTested,#athleteAiBackSquatNotTested,#athleteAiFrontSquatNotTested")) setAthleteAiRmFields();
+    });
+  }
 }
 function start() {
   if (!root) return;
