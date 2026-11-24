@@ -137,7 +137,7 @@ if (!html.includes('id="hfAthletePlanModal"')) {
     '  var status=document.getElementById("hfAthletePlanStatus");',
     '  var content=document.getElementById("hfAthletePlanContent");',
     '  if(!modal||!close||!status||!content)return;',
-    '  function esc(value){return String(value==null?"":value).replace(/[&<>"\']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","\'":"&#39;"}[ch];});}',
+    '  function esc(value){var map={"&":"&amp;","<":"&lt;",">":"&gt;"};map[String.fromCharCode(34)]="&quot;";map[String.fromCharCode(39)]="&#39;";return String(value==null?"":value).replace(/[&<>"\\u0027]/g,function(ch){return map[ch];});}',
     '  function dateLabel(value){if(!value)return "Sin fecha";var d=new Date(String(value).slice(0,10)+"T12:00:00");return Number.isNaN(d.getTime())?"Sin fecha":d.toLocaleDateString("es-AR");}',
     '  function blockLabel(block){',
     '    var intensity="";',
