@@ -174,7 +174,7 @@ grep -q 'review_athlete_ai_plan' .hf-central/admin/coach-planning.mjs
 grep -q 'data-cp-reject' .hf-central/admin/coach-planning.mjs
 grep -q 'plan.status === "rejected"' .hf-central/admin/coach-planning.mjs
 grep -q 'training_plan_rejected' supabase/migrations/20261124112000_hf_ai_plan_human_review.sql
-grep -q 'status in (\x27draft\x27,\x27rejected\x27)' supabase/migrations/20261124113000_athlete_read_rejected_ai_proposals.sql
+grep -q "status in ('draft','rejected')" supabase/migrations/20261124113000_athlete_read_rejected_ai_proposals.sql
 test -f .hf-central/supabase/migrations/20261124110000_fix_hf_onboarding_service_role_auth_lookup.sql
 test -f .hf-central/supabase/migrations/20261124112000_hf_ai_plan_human_review.sql
 test -f .hf-central/supabase/migrations/20261124113000_athlete_read_rejected_ai_proposals.sql
