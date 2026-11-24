@@ -140,8 +140,10 @@ Deno.serve(async (req: Request) => {
     if(payload.health_status==="conditions_reported" && !healthText){
       return json({error:"Describí al menos un antecedente, lesión, tratamiento o restricción, o seleccioná «No tengo antecedentes conocidos»."},400,corsInfo.headers);
     }
-    if(payload.health_status==="prefer_not_to_disclose"){
+    if(payload.health_status!=="conditions_reported"){
       payload.health_details={};
+    }
+    if(payload.health_status==="prefer_not_to_disclose"){
       payload.consent_for_ai_processing=false;
     } else if(!payload.consent_for_ai_processing){
       return json({error:"Para utilizar Coach IA debés autorizar por separado el tratamiento de los datos de salud que elegiste declarar. También podés no informarlos y solicitar una revisión humana."},400,corsInfo.headers);
