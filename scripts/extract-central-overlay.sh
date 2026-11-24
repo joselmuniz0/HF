@@ -59,6 +59,12 @@ fi
 echo "HF Central auth callback regression checks passed."
 node --check .hf-central/admin/coach-invitations.js
 echo "HF Central coach-invitations.js syntax check passed."
+node --check scripts/patch-android-athlete-planning.mjs
+grep -q 'data-hf-plan-athlete' scripts/patch-android-athlete-planning.mjs
+grep -q "getPublishedTrainingPlans" scripts/patch-android-athlete-planning.mjs
+grep -q ".eq('status', 'active')" scripts/patch-android-athlete-planning.mjs
+grep -q "published_at" scripts/patch-android-athlete-planning.mjs
+echo "HF Android athlete published-planning viewer checks passed."
 grep -q 'coachVideoAnalysisDetails' .hf-central/admin/index.html
 grep -q 'media_asset_id' .hf-central/admin/app.js
 grep -q 'applyRoleBasedInterface' .hf-central/admin/app.js
