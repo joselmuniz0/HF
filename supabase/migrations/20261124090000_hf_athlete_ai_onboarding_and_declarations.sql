@@ -236,16 +236,16 @@ begin
   if v_training_days is null or v_training_days < 1 or v_training_days > 7 or v_objective is null or length(v_objective)>1500 then
     raise exception 'Completá frecuencia y objetivo de entrenamiento.' using errcode='22023';
   end if;
-  if v_level not in ('initial','intermediate','advanced','undetermined') then
+  if v_level is null or v_level not in ('initial','intermediate','advanced','undetermined') then
     raise exception 'Seleccioná Inicial, Medio, Avanzado o evaluación por video.' using errcode='22023';
   end if;
-  if ((v_snatch is null) = v_snatch_not_tested)
-     or ((v_clean_jerk is null) = v_clean_jerk_not_tested)
-     or ((v_back_squat is null) = v_back_squat_not_tested)
-     or ((v_front_squat is null) = v_front_squat_not_tested) then
+  if ((v_snatch is null) <> v_snatch_not_tested)
+     or ((v_clean_jerk is null) <> v_clean_jerk_not_tested)
+     or ((v_back_squat is null) <> v_back_squat_not_tested)
+     or ((v_front_squat is null) <> v_front_squat_not_tested) then
     raise exception 'Para cada levantamiento ingresá una marca o indicá que no tenés RM vigente.' using errcode='22023';
   end if;
-  if v_health_status not in ('no_known_conditions','conditions_reported','prefer_not_to_disclose') then
+  if v_health_status is null or v_health_status not in ('no_known_conditions','conditions_reported','prefer_not_to_disclose') then
     raise exception 'Seleccioná una opción para la declaración de salud.' using errcode='22023';
   end if;
   if v_health_status='prefer_not_to_disclose' and v_consent then
