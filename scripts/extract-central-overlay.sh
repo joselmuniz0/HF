@@ -168,6 +168,11 @@ grep -q 'saved_plan_id' .hf-central/admin/coach-planning.mjs
 grep -q 'submitAthleteAiOnboarding' .hf-central/admin/coach-planning.mjs
 grep -q 'ready_for_ai_planning' .hf-central/admin/coach-planning.mjs
 grep -q 'submit-athlete-ai-onboarding' .hf-central/admin/coach-planning.mjs
+grep -q 'profileAllowsAiDraft' api/coach-ai-planning.js
+grep -q 'healthAllowsAiDraft' api/coach-ai-planning.js
+grep -q 'levelAllowsAiDraft' api/coach-ai-planning.js
+grep -q 'marca declarada por el atleta' supabase/migrations/20261124090000_hf_athlete_ai_onboarding_and_declarations.sql
+grep -q 'aviso de privacidad completo' .hf-central/admin/index.html
 grep -q 'athleteAiOnboardingPanel' .hf-central/admin/index.html
 grep -q 'athlete_health_declarations' .hf-central/admin/app.js
 grep -q 'athlete_ai_onboarding' .hf-central/admin/app.js
