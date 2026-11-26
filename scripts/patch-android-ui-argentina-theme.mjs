@@ -4,7 +4,7 @@ const file='app-source/src/index.html';
 let html=fs.readFileSync(file,'utf8');
 const css=`
 :root{
- --hf-arg-celeste:#74ACDF; --hf-arg-white:#FFFFFF; --hf-arg-sun:#F6B40E;
+ --hf-arg-celeste:#74ACDF; --hf-arg-white:#FFFFFF; --hf-arg-sun:#FFD21F;
  --hf-accent:var(--hf-arg-celeste); --hf-accent-foreground:#10283B;
  --hf-accent-soft:color-mix(in srgb,var(--hf-accent) 17%,white);
  --hf-focus-ring:color-mix(in srgb,var(--hf-accent) 62%,white);
