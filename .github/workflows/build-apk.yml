@@ -23,6 +23,7 @@ on:
       - 'scripts/patch-android-service-worker.mjs'
       - 'scripts/patch-android-central-cache.mjs'
       - 'scripts/patch-android-ui-argentina-theme.mjs'
+      - 'scripts/patch-android-real-dashboard.mjs'
       - 'android/signing/**'
       - 'scripts/build-central-config.mjs'
       - 'supabase/functions/**'
@@ -50,6 +51,8 @@ jobs:
           test -f app-source/capacitor.config.json
       - name: Apply Argentina UI theme and customization
         run: node scripts/patch-android-ui-argentina-theme.mjs app-source/src/index.html
+      - name: Inject functional dashboard and navigation shortcuts
+        run: node scripts/patch-android-real-dashboard.mjs app-source/src/index.html
       - name: Apply dedicated Jerk video analysis
         run: node scripts/patch-android-jerk-analysis.mjs app-source/src/index.html
       - name: Validate inline JavaScript and exact lift selector
