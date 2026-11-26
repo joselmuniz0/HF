@@ -3,7 +3,7 @@ name: Build HF Coach APK
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'fix/android-lift-selector']
     paths:
       - 'HF-Coach-Android-Source.zip'
       - '.central-source/**'
@@ -18,6 +18,8 @@ on:
       - 'scripts/patch-android-runtime-quality.mjs'
       - 'scripts/patch-android-athlete-planning.mjs'
       - 'scripts/patch-android-jerk-analysis.mjs'
+      - 'scripts/validate-android-lift-selector.mjs'
+      - 'scripts/patch-android-build-identity.mjs'
       - 'scripts/patch-android-central-cache.mjs'
       - 'android/signing/**'
       - 'scripts/build-central-config.mjs'
@@ -188,6 +190,22 @@ jobs:
       - name: Build web application
         working-directory: app-source
         run: npm run build
+      - name: Write build metadata into web assets
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const out = 'app-source/www/build-info.json';
+          fs.mkdirSync(path.dirname(out), {recursive:true});
+          fs.writeFileSync(out, JSON.stringify({
+            appVersion: '1.0.' + process.env.GITHUB_RUN_NUMBER,
+            runNumber: Number(process.env.GITHUB_RUN_NUMBER),
+            commit: process.env.GITHUB_SHA,
+            commitShort: process.env.GITHUB_SHA.slice(0,7),
+            branch: process.env.GITHUB_REF_NAME,
+            builtAt: new Date().toISOString()
+          }, null, 2) + '\\n');
+          NODE
       - name: Validate built web HTML
         run: node scripts/validate-android-lift-selector.mjs app-source/www/index.html
       - name: Generate Android project
@@ -292,7 +310,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HF-Coach-debug-apk
-          path: app-source/android/app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app-source/android/app/build/outputs/apk/debug/app-debug.apk
+            app-source/www/build-info.json
+            app-source/android/app/src/main/assets/public/build-info.json
           if-no-files-found: error
           retention-days: 14
 
