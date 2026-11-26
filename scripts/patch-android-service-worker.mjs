@@ -1,8 +1,8 @@
 import fs from "node:fs";
+import path from "node:path";
 
 const swPath = "app-source/src/public/sw.js";
 const build = String(process.env.GITHUB_SHA || "local").slice(0, 12);
-const cacheName = "hfcoach-" + build;
 
 const serviceWorker = `/* HF_SW_NETWORK_FIRST_HTML */
 const BUILD = ${JSON.stringify(build)};
@@ -88,7 +88,7 @@ if (process.argv[2] === "--validate") {
   for (const [needle, label] of checks) if (!sw.includes(needle)) throw new Error("Service worker validation failed: missing " + label + " in " + target);
   console.log("PASS: HTML Network First, offline fallback, versioned cache cleanup and static Cache First: " + target);
 } else {
-  fs.mkdirSync(new URL(".", "file://" + process.cwd() + "/" + swPath), { recursive: true });
+  fs.mkdirSync(path.dirname(swPath), { recursive: true });
   fs.writeFileSync(swPath, serviceWorker, "utf8");
   console.log("Service worker replaced with Network First for HTML and Cache First for static assets; cache build=" + build);
 }
