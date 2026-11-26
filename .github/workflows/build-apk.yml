@@ -20,6 +20,7 @@ on:
       - 'scripts/patch-android-jerk-analysis.mjs'
       - 'scripts/validate-android-lift-selector.mjs'
       - 'scripts/patch-android-build-identity.mjs'
+      - 'scripts/patch-android-service-worker.mjs'
       - 'scripts/patch-android-central-cache.mjs'
       - 'android/signing/**'
       - 'scripts/build-central-config.mjs'
@@ -167,6 +168,10 @@ jobs:
         run: node scripts/patch-android-athlete-registration.mjs
       - name: Apply Android runtime compatibility and cross-device refresh
         run: node scripts/patch-android-runtime-quality.mjs
+      - name: Make local HTML network-first and static assets cache-first
+        run: node scripts/patch-android-service-worker.mjs
+      - name: Validate patched service worker source
+        run: node scripts/patch-android-service-worker.mjs --validate app-source/src/public/sw.js
       - name: Add published training plan viewer to Android athlete roster
         run: node scripts/patch-android-athlete-planning.mjs
       - name: Inject build identity into local Android UI
@@ -208,6 +213,8 @@ jobs:
           NODE
       - name: Validate built web HTML
         run: node scripts/validate-android-lift-selector.mjs app-source/www/index.html
+      - name: Validate built web service worker
+        run: node scripts/patch-android-service-worker.mjs --validate app-source/www/sw.js
       - name: Generate Android project
         working-directory: app-source
         run: npx cap add android
@@ -216,6 +223,8 @@ jobs:
         run: npx cap sync android
       - name: Validate Android packaged HTML
         run: node scripts/validate-android-lift-selector.mjs app-source/android/app/src/main/assets/public/index.html
+      - name: Validate Android packaged service worker
+        run: node scripts/patch-android-service-worker.mjs --validate app-source/android/app/src/main/assets/public/sw.js
       - name: Install stable pilot debug signing key
         run: |
           mkdir -p "$HOME/.android"
