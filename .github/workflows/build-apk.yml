@@ -18,6 +18,7 @@ on:
       - 'scripts/patch-android-runtime-quality.mjs'
       - 'scripts/patch-android-athlete-planning.mjs'
       - 'scripts/patch-android-jerk-analysis.mjs'
+      - 'scripts/patch-android-central-cache.mjs'
       - 'android/signing/**'
       - 'scripts/build-central-config.mjs'
       - 'supabase/functions/**'
@@ -159,6 +160,9 @@ jobs:
           console.log('Android video source now uses app-private storage and a same-origin Capacitor URL; MediaPipe CPU delegate selected.');
           NODE
       - name: Add shared HF Central access inside Android app
+        run: node scripts/patch-android-stage4.mjs app-source/src/index.html
+      - name: Force refresh of embedded HF Central
+        run: node scripts/patch-android-central-cache.mjs app-source/src/index.html "$GITHUB_SHA"
         run: node scripts/patch-android-stage4.mjs
       - name: Unify Android athlete registration with HF Central
         run: node scripts/patch-android-athlete-registration.mjs
