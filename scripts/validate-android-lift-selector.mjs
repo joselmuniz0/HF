@@ -13,7 +13,7 @@ const expected = [
 const selectMatch = html.match(/<select\b[^>]*\bid=["']lift["'][^>]*>([\s\S]*?)<\/select>/i);
 if (!selectMatch) throw new Error("No se encontró <select id=\"lift\">.");
 const options = [...selectMatch[1].matchAll(/<option\b([^>]*)>([\s\S]*?)<\/option>/gi)].map(([whole, attrs, label]) => {
-  const value = attrs.match(/\bvalue=["']([^"']*)["']/i)?.[1];
+  const value = attrs.match(/\bvalue=["']([^"']*)["']/i)?.[1]?.replace(/&amp;/g, "&");
   const cleanLabel = label.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim();
   if (value == null) throw new Error("Opción sin atributo value: " + whole);
   return [value, cleanLabel];
