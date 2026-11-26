@@ -2,7 +2,7 @@ import fs from "node:fs";
 const file = process.argv[2] || "app-source/src/index.html";
 let html = fs.readFileSync(file, "utf8");
 const oldSelector = '<option value="Snatch">Arranque (Snatch)</option><option value="Clean">Cargada (Clean)</option>';
-const newSelector = oldSelector + '<option value="Split Jerk">Envión — Split Jerk</option><option value="Push Jerk">Envión — Push Jerk</option><option value="Clean & Jerk">Cargada + Envión (análisis del Jerk)</option>';
+const newSelector = oldSelector + '<option value="Split Jerk">Envión — Split Jerk</option><option value="Push Jerk">Envión — Push Jerk</option><option value="Clean & Jerk">Cargada + Envión — Clean & Jerk</option>';
 if (html.includes(oldSelector)) html = html.replace(oldSelector, newSelector);
 if (!html.includes('value="Split Jerk"') || !html.includes('value="Push Jerk"') || !html.includes('value="Clean & Jerk"')) throw new Error("Selector Jerk no quedó integrado.");
 const marker = '    const inc=f=>{const a=pt(f,11),b=pt(f,23);return Math.atan2(Math.abs(a.x-b.x),b.y-a.y)*180/Math.PI};';
