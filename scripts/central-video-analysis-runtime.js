@@ -59,7 +59,11 @@ async function hfCoachVideoFile() {
   return {file:new File([blob],asset.file_name,{type:asset.mime_type||blob.type||"video/mp4"}),mediaAsset:asset};
 }
 function hfCoachVideoResultHtml(result) {
-  const labels=[
+  const labels=result.metrics.jerk_mode?[
+    ["Dip de rodilla",result.metrics.dip_knee_deg,"°"],["Dip → Drive",result.metrics.dip_to_drive_seconds," s"],
+    ["Drive → Recepción",result.metrics.drive_to_receive_seconds," s"],["Lockout ratio",result.metrics.lockout_gap_ratio,""],
+    ["Tipo de recepción",result.metrics.jerk_variant_label,""],["Recuperación de pies",result.metrics.recovery_foot_gap_px," px"]
+  ]:[
     ["Cambio de tronco",result.metrics.torso_change_deg,"°"],["Extensión de rodilla",result.metrics.knee_extension_deg,"°"],
     ["Extensión de cadera",result.metrics.hip_extension_deg,"°"],["Distancia barra–cadera",result.metrics.bar_hip_distance_ratio,""],
     ["Extensión a recepción",result.metrics.extension_to_catch_seconds," s"],["Rodilla en recepción",result.metrics.catch_knee_deg,"°"],
@@ -134,6 +138,45 @@ async function runCoachVideoAnalysis(event) {
     const barDistance=Math.abs(point(validFrames[extensionIndex],15).x-point(validFrames[extensionIndex],23).x)/torsoLength;
     const extensionToCatch=validFrames[catchIndex].t-validFrames[extensionIndex].t, catchInclination=inclination(validFrames[catchIndex]);
     const snatch=lift==="Snatch", findings=[];
+    if(["Split Jerk","Push Jerk","Clean & Jerk"].includes(lift)){
+      const earlyEnd=Math.max(start+2,Math.min(end,start+Math.floor((end-start)*.30)));
+      let dip=start;for(let i=start;i<=earlyEnd;i++)if(knee[i]<knee[dip])dip=i;
+      let drive=dip;for(let i=dip+1;i<=end;i++)if(wristY[i]<wristY[drive])drive=i;
+      let receive=Math.min(count-1,drive+1);for(let i=drive+1;i<count;i++)if(knee[i]<knee[receive])receive=i;
+      let lock=drive;for(let i=drive;i<count;i++)if(wristY[i]<wristY[lock])lock=i;
+      const recover=Math.min(count-1,Math.max(receive,Math.floor(receive+(count-receive)*.45)));
+      const dipDrive=Math.max(0,validFrames[drive].t-validFrames[dip].t),driveReceive=Math.max(0,validFrames[receive].t-validFrames[drive].t);
+      const wristShoulderGap=Math.hypot(point(validFrames[lock],15).x-point(validFrames[lock],11).x,point(validFrames[lock],15).y-point(validFrames[lock],11).y);
+      const shoulderScale=Math.hypot(point(validFrames[lock],11).x-point(validFrames[lock],23).x,point(validFrames[lock],11).y-point(validFrames[lock],23).y)||1;
+      const lockoutRatio=wristShoulderGap/shoulderScale;
+      const feetGap=Math.abs(validFrames[recover].p[27+side].x-validFrames[recover].p[28+side].x)*width;
+      const splitGap=Math.abs(validFrames[receive].p[27+side].x-validFrames[receive].p[28+side].x);
+      const baseGap=Math.abs(validFrames[dip].p[27+side].x-validFrames[dip].p[28+side].x)||1;
+      const isSplit=lift==="Split Jerk"||(lift==="Clean & Jerk"&&splitGap/baseGap>1.35);
+      const variantLabel=isSplit?"Split Jerk / tijera":"Push Jerk / paralela";
+      if(dipDrive>.45)findings.push({e:"Dip/drive prolongado",m:dipDrive.toFixed(2)+" s desde el dip hasta el drive estimado",c:["Dip excesivamente profundo","Pérdida de tensión o sincronización"],x:["Push Press","Jerk Dip Squat","Tall Jerk"]});
+      if(driveReceive>.45)findings.push({e:"Desplazamiento bajo la barra lento",m:driveReceive.toFixed(2)+" s desde el drive hasta la recepción estimada",c:["Falta de decisión en el desplazamiento","Drive vertical insuficiente"],x:["Jerk Balance","Tall Jerk","Jerk from Blocks"]});
+      if(lockoutRatio>.30)findings.push({e:"Lockout posiblemente incompleto",m:"Ratio muñeca-hombro: "+lockoutRatio.toFixed(2),c:["Empuje final insuficiente","Movilidad o estabilidad overhead"],x:["Push Jerk","Jerk Recovery","Overhead Hold"]});
+      if(isSplit&&feetGap>0)findings.push({e:"Recuperación de pies a revisar",m:"La posición estimada al final difiere de la recepción; confirmar visualmente.",c:["Secuencia de recuperación desordenada","Base de recepción demasiado amplia"],x:["Split Jerk Recovery","Jerk Recovery"]});
+      status.textContent="Generando fotogramas de las fases del Jerk…";
+      const jerkPhases=[["Rack inicial",start],["Dip",dip],["Drive",drive],["Recepción",receive],["Lockout",lock],["Recuperación",recover]],jerkImages=[];
+      for(const phase of jerkPhases){
+        const frame=validFrames[Math.min(count-1,phase[1])];await hfVideoSeek(video,frame.t);
+        const canvas=document.createElement("canvas"),scale=Math.min(1,420/width);canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);
+        const ctx=canvas.getContext("2d");ctx.drawImage(video,0,0,canvas.width,canvas.height);ctx.strokeStyle="#d84a41";ctx.lineWidth=3;
+        [[11,13,15],[11,23,25,27,31]].forEach(chain=>chain.forEach((i,j)=>{const p=frame.p[i+side];if(j)ctx.lineTo(p.x*canvas.width,p.y*canvas.height);else ctx.moveTo(p.x*canvas.width,p.y*canvas.height);ctx.stroke();}));
+        jerkImages.push({title:phase[0],url:canvas.toDataURL("image/jpeg",.8)});
+      }
+      const jerkMetrics={jerk_mode:true,jerk_variant:isSplit?"split":"push",jerk_variant_label:variantLabel,
+        dip_knee_deg:Number(knee[dip].toFixed(1)),dip_to_drive_seconds:Number(dipDrive.toFixed(3)),
+        drive_to_receive_seconds:Number(driveReceive.toFixed(3)),lockout_gap_ratio:Number(lockoutRatio.toFixed(3)),
+        recovery_foot_gap_px:Number(feetGap.toFixed(1))};
+      hfPendingVideoAnalysis={athleteId:athleteId,lift:lift,file:file,mediaAsset:chosen.mediaAsset,metrics:jerkMetrics,
+        findings:findings,confidence:Number(confidence.toFixed(3)),frameCount:count,createdAt:new Date().toISOString()};
+      resultNode.innerHTML=hfCoachVideoResultHtml({metrics:jerkMetrics,findings:findings,confidence:confidence,frames:jerkImages});
+      $("coachVideoSave").hidden=false;status.textContent="Análisis del Jerk terminado. Revisá las fases e indicadores antes de guardar.";
+      status.className="status success";return;
+    }
     if(torsoChange>8)findings.push({e:"Caderas suben más rápido que los hombros en el primer tirón",m:"El tronco se inclina "+torsoChange.toFixed(0)+"° más entre el piso y la rodilla",c:["Posición inicial inadecuada","Debilidad de piernas o espalda"],x:[lift+" Deadlift",lift+" Deadlift with Pause"]});
     if(barDistance>0.45)findings.push({e:"Barra alejada del cuerpo en la extensión",m:"Muñecas a "+barDistance.toFixed(2)+" largos de tronco de la cadera",c:["Trayectoria incorrecta","Extensión prematura","Brazos activados antes de tiempo","Posición inicial inadecuada"],x:[lift+" Pull","Hang "+lift,lift+" High Pull","Muscle "+lift,lift+" Pull from Blocks"]});
     if(knee[extensionIndex]<165||hip[extensionIndex]<165)findings.push({e:"Extensión incompleta",m:"Rodilla "+knee[extensionIndex].toFixed(0)+"° y cadera "+hip[extensionIndex].toFixed(0)+"° en el punto de máxima extensión",c:["Equilibrio en talones","Transición apresurada"],x:[lift+" Pull",lift+" High Pull","Hang "+lift]});
