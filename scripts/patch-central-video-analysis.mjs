@@ -70,7 +70,7 @@ if(!html.includes('id="coachVideoAnalysisDetails"')) {
     '<summary>Nuevo videoanálisis</summary>',
     '<form id="coachVideoAnalysisForm" class="hf-video-form">',
     '<label>Atleta<select id="coachVideoAthlete" required><option value="">Seleccionar atleta…</option></select></label>',
-    '<label>Levantamiento<select id="coachVideoLift"><option value="Snatch">Arranque (Snatch)</option><option value="Clean">Cargada (Clean)</option></select></label>',
+    '<label>Levantamiento<select id="coachVideoLift"><option value="Snatch">Arranque (Snatch)</option><option value="Clean">Cargada (Clean)</option><option value="Split Jerk">Envión — Split Jerk</option><option value="Push Jerk">Envión — Push Jerk</option><option value="Clean & Jerk">Cargada + Envión (análisis del Jerk)</option></select></label>',
     '<label>Video ya recibido<select id="coachVideoExisting"><option value="">Seleccionar video ya recibido…</option></select></label>',
     '<label>O cargar video desde este equipo<input id="coachVideoFile" type="file" accept="video/mp4,video/quicktime,video/webm"></label>',
     '<p class="notice">Usá un intento completo de hasta 20 segundos, cámara fija, vista lateral y cuerpo completo. El análisis se realiza en el navegador con MediaPipe. El video se guarda en el almacenamiento privado de HF Coach.</p>',
