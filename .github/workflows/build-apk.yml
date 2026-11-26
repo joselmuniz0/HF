@@ -46,18 +46,16 @@ jobs:
           test -f app-source/capacitor.config.json
       - name: Apply dedicated Jerk video analysis
         run: node scripts/patch-android-jerk-analysis.mjs app-source/src/index.html
-      - name: Validate inline JavaScript and Jerk options
+      - name: Validate inline JavaScript and exact lift selector
         working-directory: app-source
         run: |
+          node ../scripts/validate-android-lift-selector.mjs src/index.html
           node <<'NODE'
           const fs = require('fs');
           const os = require('os');
           const path = require('path');
           const { spawnSync } = require('child_process');
           const html = fs.readFileSync('src/index.html', 'utf8');
-          for (const option of ['Split Jerk', 'Push Jerk', 'Clean & Jerk']) {
-            if (!html.includes(option)) throw new Error('Missing analyzer option: ' + option);
-          }
           const scripts = [...html.matchAll(/<script(?:\s+type="module")?>([\s\S]*?)<\/script>/g)];
           if (!scripts.length) throw new Error('No inline JavaScript scripts found.');
           scripts.forEach((match, i) => {
@@ -66,7 +64,7 @@ jobs:
             const check = spawnSync(process.execPath, ['--check', p], {encoding:'utf8'});
             if (check.status !== 0) throw new Error(check.stderr || 'JS syntax check failed');
           });
-          console.log('Inline JavaScript syntax and Jerk selector checks passed.');
+          console.log('Inline JavaScript syntax checks passed.');
           NODE
       - name: Validate HF Central video-analysis runtime syntax
         run: node --check scripts/central-video-analysis-runtime.js
@@ -169,6 +167,10 @@ jobs:
         run: node scripts/patch-android-runtime-quality.mjs
       - name: Add published training plan viewer to Android athlete roster
         run: node scripts/patch-android-athlete-planning.mjs
+      - name: Inject build identity into local Android UI
+        run: node scripts/patch-android-build-identity.mjs app-source/src/index.html
+      - name: Final source validation after all patches
+        run: node scripts/validate-android-lift-selector.mjs app-source/src/index.html
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -186,12 +188,16 @@ jobs:
       - name: Build web application
         working-directory: app-source
         run: npm run build
+      - name: Validate built web HTML
+        run: node scripts/validate-android-lift-selector.mjs app-source/www/index.html
       - name: Generate Android project
         working-directory: app-source
         run: npx cap add android
       - name: Sync Capacitor
         working-directory: app-source
         run: npx cap sync android
+      - name: Validate Android packaged HTML
+        run: node scripts/validate-android-lift-selector.mjs app-source/android/app/src/main/assets/public/index.html
       - name: Install stable pilot debug signing key
         run: |
           mkdir -p "$HOME/.android"
