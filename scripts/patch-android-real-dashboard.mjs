@@ -57,8 +57,9 @@ const markup = `
  launch.addEventListener('click',open);close.addEventListener('click',shut);overlay.addEventListener('click',e=>{if(e.target===overlay)shut()});
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))shut()});
  overlay.querySelectorAll('[data-hf-dash-go]').forEach(btn=>btn.addEventListener('click',()=>{const tab=findTab(btn.dataset.hfDashGo);if(tab){tab.click();shut()}else{document.getElementById('hfDashNotice').textContent='La sección solicitada no fue encontrada en esta versión de la app. No se simula la navegación.'}}));
- // Open on first launch of this build so users see the updated dashboard immediately.
- window.addEventListener('load',()=>setTimeout(open,350),{once:true});
+ // Force launcher visibility and open immediately: this script is injected at body end, so waiting for load may miss the event in Android WebView.
+ launch.style.setProperty("display","block","important");launch.style.setProperty("visibility","visible","important");launch.style.setProperty("opacity","1","important");
+ open();
 })();
 </script>`;
 html = html.replace('</body>', markup + '\n</body>');
