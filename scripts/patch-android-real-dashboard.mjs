@@ -61,6 +61,6 @@ const markup = `
  window.addEventListener('load',()=>setTimeout(open,350),{once:true});
 })();
 </script>`;
-html = html.replace('</body>', markup + '\\n</body>');
+html = html.replace('</body>', markup + '\n</body>');
 fs.writeFileSync(target, html, 'utf8');
 console.log('HF dashboard v2 injected: visible launcher, auto-open, responsive cards, live counts, navigation links.');
