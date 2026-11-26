@@ -44,6 +44,34 @@ a{color:var(--hf-accent)!important}
 .hf-swatch{width:34px;height:34px;border-radius:50%;border:2px solid rgba(0,0,0,.12)}
 #hfCustomColor{width:100%;height:48px;padding:4px!important}
 .hf-dialog-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap}
+
+/* HF Coach compact app shell / navigation stage */
+:root{--hf-header-height:64px;--hf-nav-gap:8px}
+body{min-height:100dvh}
+header,.app-header,.topbar,.toolbar,[class*="header"],[class*="topbar"]{max-width:100%}
+header,.app-header,.topbar{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+header h1,.app-header h1,.topbar h1{margin:0!important;flex:1 1 auto;min-width:0}
+#hfAppearanceTrigger{white-space:nowrap;flex-shrink:0}
+nav,[role="tablist"],.tabs,[class*="navigation"]{gap:var(--hf-nav-gap)}
+[data-tab],nav button,.tabs button,[role="tab"]{min-height:44px;padding:.65rem .85rem!important;font-weight:600;transition:background .15s ease,border-color .15s ease}
+[data-tab].active,[role="tab"][aria-selected="true"],.tabs .active{box-shadow:inset 0 -2px 0 var(--hf-accent)}
+main,[role="main"],.main-content{width:100%;max-width:1100px;margin-inline:auto;padding-inline:clamp(12px,3vw,24px)}
+/* Video analysis controls become a consistent vertical flow */
+#analisis,#video-analysis,[data-tab-content="analisis"],.video-analysis{max-width:900px;margin-inline:auto}
+#analisis label,#video-analysis label,[data-tab-content="analisis"] label{display:block;margin:0 0 6px;font-weight:650}
+#analisis select,#analisis input,#analisis textarea,#video-analysis select,#video-analysis input,#video-analysis textarea{width:100%;max-width:100%}
+#go,#analizar,#analyzeVideo{width:100%;min-height:48px;font-weight:750;letter-spacing:.01em}
+@media(max-width:600px){
+ header,.app-header,.topbar{align-items:center;gap:8px;padding:10px 12px}
+ header h1,.app-header h1,.topbar h1{font-size:1.15rem!important;line-height:1.2!important;flex-basis:100%}
+ #hfAppearanceTrigger{position:static!important;margin:0!important}
+ nav,[role="tablist"],.tabs{display:flex;overflow-x:auto;max-width:100%;padding:4px 10px 8px;scrollbar-width:none}
+ nav::-webkit-scrollbar,[role="tablist"]::-webkit-scrollbar,.tabs::-webkit-scrollbar{display:none}
+ [data-tab],nav button,.tabs button,[role="tab"]{flex:0 0 auto;white-space:nowrap;font-size:.9rem}
+ main,[role="main"],.main-content{padding:12px}
+ #analisis,#video-analysis,[data-tab-content="analisis"],.video-analysis{padding:12px!important}
+}
+
 @media(max-width:600px){body{padding-left:0!important;padding-right:0!important}.hf-theme-grid{grid-template-columns:repeat(2,1fr)}#hfAppearanceDialog{padding:17px}}
 `;
 const js=`
