@@ -56,6 +56,24 @@ nav,[role="tablist"],.tabs,[class*="navigation"]{gap:var(--hf-nav-gap)}
 [data-tab],nav button,.tabs button,[role="tab"]{min-height:44px;padding:.65rem .85rem!important;font-weight:600;transition:background .15s ease,border-color .15s ease}
 [data-tab].active,[role="tab"][aria-selected="true"],.tabs .active{box-shadow:inset 0 -2px 0 var(--hf-accent)}
 main,[role="main"],.main-content{width:100%;max-width:1100px;margin-inline:auto;padding-inline:clamp(12px,3vw,24px)}
+/* Stage 3: dashboard/card hierarchy and mobile readability */
+.card,.panel,.box,.section,.dashboard-card,[class*="stat"],[class*="metric"],[class*="kpi"]{
+ box-shadow:0 2px 10px rgba(20,45,65,.055);
+}
+.dashboard,.dashboard-grid,[class*="dashboard"]{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:14px;
+}
+.card h2,.panel h2,.section h2{font-size:clamp(1.05rem,3.6vw,1.35rem);margin-top:0}
+.card h3,.panel h3,.section h3{font-size:clamp(.98rem,3vw,1.15rem)}
+.card,.panel,.box,.section{padding:clamp(12px,2.5vw,18px)}
+table{width:100%;border-collapse:collapse}
+table th,table td{padding:10px 8px;border-bottom:1px solid var(--hf-border);text-align:left}
+table th{color:var(--hf-text-muted);font-size:.88rem;font-weight:700}
+@media(max-width:600px){
+ .dashboard,.dashboard-grid,[class*="dashboard"]{grid-template-columns:1fr!important;gap:10px}
+ .card,.panel,.box,.section{padding:13px!important}
+ table{display:block;overflow-x:auto;white-space:nowrap}
+}
 /* Video analysis controls become a consistent vertical flow */
 #analisis,#video-analysis,[data-tab-content="analisis"],.video-analysis{max-width:900px;margin-inline:auto}
 #analisis label,#video-analysis label,[data-tab-content="analisis"] label{display:block;margin:0 0 6px;font-weight:650}
