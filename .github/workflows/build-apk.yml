@@ -3,7 +3,7 @@ name: Build HF Coach APK
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'fix/android-lift-selector']
+    branches: [main, 'fix/android-lift-selector', 'feature/ui-system-argentina']
     paths:
       - 'HF-Coach-Android-Source.zip'
       - '.central-source/**'
