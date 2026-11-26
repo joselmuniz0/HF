@@ -11,6 +11,8 @@ on:
       - 'scripts/patch-central-stage2.mjs'
       - 'scripts/patch-central-stage3.mjs'
       - 'scripts/patch-central-stage4.mjs'
+      - 'scripts/patch-central-video-analysis.mjs'
+      - 'scripts/central-video-analysis-runtime.js'
       - 'scripts/patch-android-stage4.mjs'
       - 'scripts/patch-android-athlete-registration.mjs'
       - 'scripts/patch-android-runtime-quality.mjs'
@@ -65,6 +67,8 @@ jobs:
           });
           console.log('Inline JavaScript syntax and Jerk selector checks passed.');
           NODE
+      - name: Validate HF Central video-analysis runtime syntax
+        run: node --check scripts/central-video-analysis-runtime.js
       - name: Reconstruct and apply HF Central overlay
         run: |
           bash scripts/extract-central-overlay.sh
