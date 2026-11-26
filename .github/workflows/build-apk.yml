@@ -204,7 +204,7 @@ jobs:
             commitShort: process.env.GITHUB_SHA.slice(0,7),
             branch: process.env.GITHUB_REF_NAME,
             builtAt: new Date().toISOString()
-          }, null, 2) + '\\n');
+          }, null, 2) + String.fromCharCode(10));
           NODE
       - name: Validate built web HTML
         run: node scripts/validate-android-lift-selector.mjs app-source/www/index.html
