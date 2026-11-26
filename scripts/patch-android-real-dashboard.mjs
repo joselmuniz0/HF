@@ -78,6 +78,6 @@ const markup = `
  }));
 })();
 </script>`;
-html = html.replace('</body>', markup + '\\n</body>');
+html = html.replace('</body>', markup + '\n</body>');
 fs.writeFileSync(target, html, 'utf8');
 console.log('HF functional dashboard launcher, live athlete count, and section shortcuts injected.');
